@@ -78,6 +78,12 @@
 
 ## 2. Bitácora de Uso de Inteligencia Artificial (IA)
 
+| Proyecto | Sistema de Gestión de Inventarios – LogiTech Solutions S.A.S. |
+| :--- | :--- |
+| **Equipo / Integrantes** | Mariana Duque Giraldo, Andrés Felipe Gálvez Carmona |
+| **Entrega N.°** | 1 |
+| **Periodo cubierto** | 19/09/2026 - 28/09/2026 |
+
 | Fecha | Integrante | Herramienta de IA | Tarea / Actividad Apoyada | Prompt Utilizado (Resumen) | Nivel de Intervención Humana | Resultado / Aprendizaje |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | 19/09/2026 | Andrés Felipe Gálvez Carmona | Gemini | Fundamentación técnica verídica con referencias de mercado (Punto 1 y 2) y prompt para Notebook para una mayor claridad de lo investigado. | 1. Solicitar que la información sea 100% verdadera dando referencias técnicas de los 3 sistemas investigados (Odoo Inventory, Zoho Inventory, Alegra) y del sistema propio del caso de estudio.<br>2. Solicitar un prompt especializado para NotebookLM que extraiga y sintetice la información de estos 4 sistemas en conjunto. | **Alto** | Se estructuraron los datos técnicos reales de Odoo, Zoho y Alegra, justificando las deficiencias arquitectónicas que motivan la creación del sistema en microservicios, y se incluyó el prompt de extracción completo para evidencias. |
