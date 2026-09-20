@@ -73,3 +73,28 @@
 | **Escalabilidad y Rendimiento** | Para escalar hay que meterle más recursos a todo el servidor monolítico; riesgo de lentitud si la base de datos se satura. | El rendimiento depende del proveedor y existen límites en la cantidad de peticiones que se pueden hacer a su API. | La velocidad depende del plan contratado y de qué tan cargados estén los servidores compartidos de Alegra. |
 
 ---
+
+## 2. Bitácora de Uso de Inteligencia Artificial (IA)
+
+| Fecha | Integrante | Herramienta de IA | Tarea / Actividad Apoyada | Prompt Utilizado (Resumen) | Nivel de Intervención Humana | Resultado / Aprendizaje |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| 19/09/2026 | Andrés Felipe Gálvez Carmona | Gemini | Fundamentación técnica verídica con referencias de mercado (Punto 1 y 2) y prompt para Notebook para una mayor claridad de lo investigado. | 1. Solicitar que la información sea 100% verdadera dando referencias técnicas de los 3 sistemas investigados (Odoo Inventory, Zoho Inventory, Alegra) y del sistema propio del caso de estudio.<br>2. Solicitar un prompt especializado para NotebookLM que extraiga y sintetice la información de estos 4 sistemas en conjunto. | **Alto** | Se estructuraron los datos técnicos reales de Odoo, Zoho y Alegra, justificando las deficiencias arquitectónicas que motivan la creación del sistema en microservicios, y se incluyó el prompt de extracción completo para evidencias. |
+| 19/09/2026 | Mariana Duque Giraldo | NotebookLM | Extracción, análisis comparativo y sintetización técnica de Odoo, Zoho y Alegra. | *Actúa como arquitecto de software... Extrae y analiza la información técnica de Odoo, Zoho y Alegra. Genera un análisis técnico que identifique sus cuellos de botella para fundamentar la solución en microservicios.* | **Medio** | Se obtuvo una síntesis técnica comparativa que respalda documentalmente la decisión de migrar del modelo monolítico y SaaS hacia una arquitectura propia en microservicios, API Gateway y Kubernetes para la Entrega 1. |
+| 19/09/2026 | Andrés Felipe Gálvez Carmona | Gemini | Definición de criterios técnicos y reestructuración de la matriz comparativa de sistemas de inventario. | *Con base en lo investigado de los 3 sistemas (Odoo, Zoho, Alegra), identifica y dame criterios técnicos para hacer la comparativa.* | **Medio** | Se establecieron 8 criterios de evaluación técnica y se ajustó el lenguaje de la tabla comparativa, facilitando la defensa de la arquitectura de microservicios propia frente a soluciones monolíticas y SaaS. |
+
+---
+
+## 3. Referencias Bibliográficas (Formato APA 7.ª ed.)
+
+* Archon Systems Inc. (2026). *inFlow Inventory: Inventory management software for small business*. [https://www.inflowinventory.com/](https://www.inflowinventory.com/)
+* Dooit. (2026, 12 de enero). *¿Qué es Odoo? Guía 2026 del ERP modular que lidera en Colombia*. Blog Dooit. [https://www.dooit.com.co/blog/blog-dooit-20/que-es-odoo-guia-2026-del-erp-modular-que-lidera-en-colombia-1](https://www.dooit.com.co/blog/blog-dooit-20/que-es-odoo-guia-2026-del-erp-modular-que-lidera-en-colombia-1)
+* Odoo S.A. (2026a). *Odoo: Open source ERP and CRM* [Código fuente de software]. GitHub. [https://github.com/odoo/odoo](https://github.com/odoo/odoo)
+* Odoo S.A. (2026b). *Inventory management and double-entry system*. Odoo 18.0 Documentation. [https://www.odoo.com/documentation/18.0/es/applications/inventory_and_mrp/inventory.html](https://www.odoo.com/documentation/18.0/es/applications/inventory_and_mrp/inventory.html)
+* Soluciones en la Nube S.A.S. (2026a). *Alegra: Software de facturación, contabilidad e inventario para PYMEs*. [https://www.alegra.com/](https://www.alegra.com/)
+* Soluciones en la Nube S.A.S. (2026b). *Alegra API Developer Documentation*. API Portal. [https://developer.alegra.com/](https://developer.alegra.com/)
+* Soluciones en la Nube S.A.S. (2026c). *Gestión de inventarios y multialmacén en Alegra*. Centro de Ayuda. [https://ayuda.alegra.com/](https://ayuda.alegra.com/)
+* Zoho Corporation. (2026a). *Zoho Inventory: Software de gestión de inventarios para empresas*. [https://www.zoho.com/es-xl/inventory/](https://www.zoho.com/es-xl/inventory/)
+* Zoho Corporation. (2026b). *Zoho Inventory API Documentation*. Developer Documentation. [https://www.zoho.com/inventory/developer/api/v1/](https://www.zoho.com/inventory/developer/api/v1/)
+* Zoho Corporation. (2026c). *Security at Zoho: Multi-tenant architecture and data isolation*. Security Center. [https://www.zoho.com/security.html](https://www.zoho.com/security.html)
+
+
