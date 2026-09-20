@@ -94,7 +94,7 @@
 
 ---
 
-## 3. Referencias Bibliográficas (Formato APA 7.ª ed.)
+## 3. Referencias Bibliográficas
 
 * Dooit. (2026, 12 de enero). *¿Qué es Odoo? Guía 2026 del ERP modular que lidera en Colombia*. Blog Dooit. [https://www.dooit.com.co/blog/blog-dooit-20/que-es-odoo-guia-2026-del-erp-modular-que-lidera-en-colombia-1](https://www.dooit.com.co/blog/blog-dooit-20/que-es-odoo-guia-2026-del-erp-modular-que-lidera-en-colombia-1)
 * Odoo S.A. (2026a). *Odoo: Open source ERP and CRM* [Código fuente de software]. GitHub. [https://github.com/odoo/odoo](https://github.com/odoo/odoo)
