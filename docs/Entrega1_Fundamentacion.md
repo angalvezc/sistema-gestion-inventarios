@@ -61,7 +61,7 @@
 
 ### 1.4 Cuadro Comparativo de Sistemas de Mercado
 
-| Criterio Técnico | Odoo Inventory | Zoho Inventory | Alegra (Nube) |
+| Criterio Técnico | Odoo Inventory | Zoho Inventory | Alegra|
 | :--- | :--- | :--- | :--- |
 | **Estilo Arquitectónico** | Monolito tradicional dividido en 3 capas (usando Python en el backend, PostgreSQL en la base de datos y JavaScript en el frontend). | Sistema SaaS donde la aplicación y los servidores son administrados internamente por Zoho. | Plataforma SaaS en la nube donde la infraestructura es compartida y gestionada por la empresa Alegra. |
 | **Enfoque Principal y Mercado Objetivo** | Un ERP completo para empresas medianas o grandes con procesos de inventario complejos. | Enfocado en PyMEs que venden por internet (e-commerce) y necesitan gestionar pedidos de varios canales. | Pensado para pequeñas empresas en Latinoamérica que necesitan llevar contabilidad, facturación electrónica e inventario. |
