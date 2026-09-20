@@ -87,7 +87,6 @@
 
 ## 3. Referencias Bibliográficas (Formato APA 7.ª ed.)
 
-* Archon Systems Inc. (2026). *inFlow Inventory: Inventory management software for small business*. [https://www.inflowinventory.com/](https://www.inflowinventory.com/)
 * Dooit. (2026, 12 de enero). *¿Qué es Odoo? Guía 2026 del ERP modular que lidera en Colombia*. Blog Dooit. [https://www.dooit.com.co/blog/blog-dooit-20/que-es-odoo-guia-2026-del-erp-modular-que-lidera-en-colombia-1](https://www.dooit.com.co/blog/blog-dooit-20/que-es-odoo-guia-2026-del-erp-modular-que-lidera-en-colombia-1)
 * Odoo S.A. (2026a). *Odoo: Open source ERP and CRM* [Código fuente de software]. GitHub. [https://github.com/odoo/odoo](https://github.com/odoo/odoo)
 * Odoo S.A. (2026b). *Inventory management and double-entry system*. Odoo 18.0 Documentation. [https://www.odoo.com/documentation/18.0/es/applications/inventory_and_mrp/inventory.html](https://www.odoo.com/documentation/18.0/es/applications/inventory_and_mrp/inventory.html)
