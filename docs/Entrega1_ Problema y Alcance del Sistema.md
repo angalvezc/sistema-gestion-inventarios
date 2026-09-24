@@ -1,4 +1,4 @@
-ENTREGA 1: INVESTIGACIÓN Y FUNDAMENTACIÓN
+#ENTREGA 1: INVESTIGACIÓN Y FUNDAMENTACIÓN
 
 Proyecto: Sistema de Gestión de Inventarios - LogiTech Solutions S.A.S.
 Equipo / Integrantes: Mariana Duque Giraldo, Andrés Felipe Gálvez Carmona
@@ -6,7 +6,7 @@ Entrega N.°: 1
 Periodo cubierto: 19/09/2026 - 28/09/2026
 
 
-2. Definición del Problema y Alcance del Sistema (Caso de Estudio)
+##2. Definición del Problema y Alcance del Sistema (Caso de Estudio)
 
 2.1 Caso de Estudio: LogiTech Solutions S.A.S.
 LogiTech Solutions S.A.S. es una empresa dedicada a la comercialización y distribución al por mayor de insumos tecnológicos. Actualmente opera mediante dos (2) bodegas físicas de almacenamiento y distribución a nivel nacional.
@@ -48,7 +48,7 @@ El sistema abarcará la automatización e integración técnica de los siguiente
 - Contenerización y Orquestación: Todos los componentes de software (interfaz React, API Gateway, microservicios, bases de datos independientes y el broker RabbitMQ) se empaquetarán en contenedores Docker y se orquestarán mediante Kubernetes para simular un ambiente de producción de alta disponibilidad.
 
 
-3. Justificación Técnica de la Arquitectura de Microservicios frente a una Arquitectura Monolítica
+##3. Justificación Técnica de la Arquitectura de Microservicios frente a una Arquitectura Monolítica
 
 La elección de una arquitectura de microservicios desacoplada consumida por un cliente en React frente a un esquema monolítico se fundamenta en los siguientes criterios de ingeniería de software:
 
@@ -58,7 +58,7 @@ La elección de una arquitectura de microservicios desacoplada consumida por un 
 4. Separación Clara entre Frontend y Backend: La aplicación cliente desarrollada en React es completamente agnóstica de la infraestructura del backend; consume únicamente endpoints REST expuestos por el API Gateway, facilitando el desarrollo paralelo y la mantenibilidad del código.
 
 
-4. Identificación Preliminar de Microservicios (Bounded Contexts)
+##4. Identificación Preliminar de Microservicios (Bounded Contexts)
 
 En correspondencia con los principios de *Domain-Driven Design* (DDD), se delimitan los siguientes seis (6) microservicios:
 
