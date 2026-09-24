@@ -62,32 +62,11 @@ La elección de una arquitectura de microservicios desacoplada consumida por un 
 
 En correspondencia con los principios de Domain-Driven Design (DDD), se delimitan los siguientes seis (6) microservicios:
 
-Microservicio: ms-auth-users
-Dominio / Bounded Context: Autenticación y Seguridad
-Base de Datos Propia: db_auth (Contenedor Dedicated)
-Responsabilidad Principal: Control de acceso perimetral, gestión de roles (RBAC) y emisión/validación de tokens JWT.
-
-Microservicio: ms-products
-Dominio / Bounded Context: Catálogo de Productos
-Base de Datos Propia: db_products (Contenedor Dedicated)
-Responsabilidad Principal: Registro de insumos tecnológicos, especificaciones, categorías y códigos de barras / SKU.
-
-Microservicio: ms-inventory-stock
-Dominio / Bounded Context: Control de Stock y Existencias
-Base de Datos Propia: db_stock (Contenedor Dedicated)
-Responsabilidad Principal: Gestión de saldos en tiempo real por bodega (2 bodegas), transferencias y cálculo de existencias.
-
-Microservicio: ms-suppliers
-Dominio / Bounded Context: Proveedores
-Base de Datos Propia: db_suppliers (Contenedor Dedicated)
-Responsabilidad Principal: Directorio de proveedores, contactos y condiciones comerciales de suministro.
-
-Microservicio: ms-purchases
-Dominio / Bounded Context: Órdenes de Compra
-Base de Datos Propia: db_purchases (Contenedor Dedicated)
-Responsabilidad Principal: Gestión del ciclo de vida de órdenes de compra y notificación de recepción de mercancía.
-
-Microservicio: ms-returns-audit
-Dominio / Bounded Context: Devoluciones y Kardex Histórico
-Base de Datos Propia: db_audit (Contenedor Dedicated)
-Responsabilidad Principal: Procesamiento de garantías/devoluciones y almacenamiento del Kardex inmutable (append-only).
+| Microservicio | Dominio / Bounded Context | Base de Datos Propia | Responsabilidad Principal |
+| --- | --- | --- | --- |
+| ms-auth-users | Autenticación y Seguridad | db_auth (Contenedor Dedicated) | Control de acceso perimetral, gestión de roles (RBAC) y emisión/validación de tokens JWT. |
+| ms-products | Catálogo de Productos | db_products (Contenedor Dedicated) | Registro de insumos tecnológicos, especificaciones, categorías y códigos de barras / SKU. |
+| ms-inventory-stock | Control de Stock y Existencias | db_stock (Contenedor Dedicated) | Gestión de saldos en tiempo real por bodega (2 bodegas), transferencias y cálculo de existencias. |
+| ms-suppliers | Proveedores | db_suppliers (Contenedor Dedicated) | Directorio de proveedores, contactos y condiciones comerciales de suministro. |
+| ms-purchases | Órdenes de Compra | db_purchases (Contenedor Dedicated) | Gestión del ciclo de vida de órdenes de compra y notificación de recepción de mercancía. |
+| ms-returns-audit | Devoluciones y Kardex Histórico | db_audit (Contenedor Dedicated) | Procesamiento de garantías/devoluciones y almacenamiento del Kardex inmutable (append-only). |
