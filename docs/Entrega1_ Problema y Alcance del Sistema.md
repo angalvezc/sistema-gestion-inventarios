@@ -1,3 +1,10 @@
+# ENTREGA 1: INVESTIGACIÓN Y FUNDAMENTACIÓN
+| Proyecto | Sistema de Gestión de Inventarios – LogiTech Solutions S.A.S. |
+| :--- | :--- |
+| **Equipo / Integrantes** | Mariana Duque Giraldo, Andrés Felipe Gálvez Carmona |
+| **Entrega N.°** | 1 |
+| **Periodo cubierto** | 19/09/2026 - 28/09/2026 |
+
 
 ## 2. Definición del Problema y Alcance del Sistema (Caso de Estudio)
 
