@@ -12,7 +12,7 @@ Periodo cubierto: 19/09/2026 - 28/09/2026
 LogiTech Solutions S.A.S. es una empresa dedicada a la comercialización y distribución al por mayor de insumos tecnológicos. Actualmente opera mediante dos (2) bodegas físicas de almacenamiento y distribución a nivel nacional.
 
 ### 2.2 Planteamiento del Problema
-A partir del análisis de mercado realizado en la Sección 1, se evidencia que las soluciones comerciales imponen severas limitaciones: los sistemas monolíticos (como Odoo) concentran la carga operativa en una única base de datos relacional compartida, mientras que las plataformas SaaS (como Zoho y Alegra) imponen restricciones de personalización (vendor lock-in) y límites strictly de peticiones por API (rate-limiting).
+A partir del análisis de mercado realizado en la Entrega1_Fundamentacion, se evidencia que las soluciones comerciales imponen severas limitaciones: los sistemas monolíticos (como Odoo) concentran la carga operativa en una única base de datos relacional compartida, mientras que las plataformas SaaS (como Zoho y Alegra) imponen restricciones de personalización (vendor lock-in) y límites strictly de peticiones por API (rate-limiting).
 
 Actualmente, LogiTech Solutions S.A.S. padece estas deficiencias al gestionar sus dos bodegas mediante un sistema monolítico heredado combinado con hojas de cálculo descentralizadas de Excel. Esta operativa genera:
 
