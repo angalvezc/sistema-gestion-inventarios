@@ -5,8 +5,6 @@
 **Equipo / Integrantes:** Mariana Duque Giraldo, Andrés Felipe Gálvez Carmona
 **Entrega N.°:** 2
 
-> Este documento continúa la Entrega 1 (fundamentación, alcance, 6 microservicios, RF01-RF12 y RNF01-RNF14) y cubre los entregables de la fase de diseño.
-
 ---
 
 ## Índice
