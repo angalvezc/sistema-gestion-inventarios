@@ -523,12 +523,12 @@ El campo event_id único evita registros duplicados si RabbitMQ reentrega un men
 
 | Decisión | Detalle |
 | --- | --- |
-| Imágenes | Una por componente: `logitech/frontend`, `logitech/api-gateway` y una por microservicio. |
-| Dockerfile | Uso de imágenes base oficiales y ligeras (Alpine Linux) para minimizar el peso del contenedor. |
+| Imágenes | Una por componente: logitech/frontend, logitech/api-gateway y una por microservicio. |
+| Dockerfile | Multi-stage (compilar y luego copiar solo el resultado) para imágenes pequeñas. |
 | Seguridad | Usuario no root, sin secretos dentro de la imagen. |
-| Salud | Cada servicio expone `/health/live` y `/health/ready`. |
-| Configuración | Variables de entorno (12-factor); en Kubernetes vía `ConfigMap` y `Secret`. |
-| Bases y broker | Imágenes oficiales (`postgres:16-alpine`, `rabbitmq:3-management`). |
+| Salud | Cada servicio expone /health/live y /health/ready. |
+| Configuración | Variables de entorno (12-factor); en Kubernetes vía ConfigMap y Secret. |
+| Bases y broker | Imágenes oficiales (postgres:16-alpine, rabbitmq:3-management). |
 
 Archivos entregados:
 
