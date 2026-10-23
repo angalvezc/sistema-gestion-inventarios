@@ -13,8 +13,7 @@
 2. Diseño de contratos de API por microservicio (OpenAPI/Swagger)
 3. Modelo de datos por microservicio (diagramas entidad-relación)
 4. Estrategia de contenerización y orquestación (Dockerfiles y manifiestos de Kubernetes)
-5. Plan de las 15 pruebas de rendimiento por integrante
-6. Actividad de los integrantes en GitHub
+5. Bitácora de Uso de Inteligencia Artificial (IA) y Reflexión Final
 
 ---
 
@@ -91,23 +90,23 @@ flowchart TB
 | Frontend React | SPA que solo conoce al API Gateway; nunca llama directamente a un microservicio (RF01, RF12, RNF01). |
 | Ingress | Punto de entrada al clúster; termina TLS y reenvía al API Gateway. |
 | API Gateway propio | Valida el JWT, aplica RBAC por ruta, enruta y limita peticiones (RNF05, RNF07). |
-| Service Discovery | Se resuelve con los `Service` de Kubernetes y CoreDNS: cada microservicio se invoca por nombre (por ejemplo `http://ms-inventory-stock:8083`) sin IPs fijas. |
+| Service Discovery | Se resuelve con los Service de Kubernetes y CoreDNS: cada microservicio se invoca por nombre (por ejemplo http://ms-inventory-stock:8083) sin IPs fijas. |
 | Microservicios | Seis servicios autónomos, cada uno con arquitectura hexagonal (RNF11). |
 | Bases de datos | Una por servicio; ningún servicio accede a la base de otro (RNF02). |
 | RabbitMQ | Propaga eventos de dominio sin acoplamiento temporal (RNF08). |
 
 ### 1.2 Reglas de comunicación
 
-| Tipo | Origen → Destino | Uso |
+| Tipo | Origen -> Destino | Uso |
 | --- | --- | --- |
-| Síncrona REST/JSON | React → API Gateway | Todas las acciones del usuario. |
-| Síncrona REST/JSON | API Gateway → microservicio | Enrutamiento tras validar JWT. |
-| Síncrona REST/JSON | ms-purchases → ms-products / ms-suppliers | Validar existencia de SKU y proveedor al crear una orden (lectura). |
-| Asíncrona AMQP | ms-purchases → RabbitMQ → ms-inventory-stock | `purchase.received` incrementa stock (RF10). |
-| Asíncrona AMQP | ms-inventory-stock → RabbitMQ → ms-returns-audit | `stock.movement.created` alimenta el Kardex (RF07). |
-| Asíncrona AMQP | ms-returns-audit → RabbitMQ → ms-inventory-stock | `return.processed` reingresa stock si la devolución es reutilizable (RF11). |
+| Síncrona REST/JSON | React -> API Gateway | Todas las acciones del usuario. |
+| Síncrona REST/JSON | API Gateway -> microservicio | Enrutamiento tras validar JWT. |
+| Síncrona REST/JSON | ms-purchases -> ms-products / ms-suppliers | Validar existencia de SKU y proveedor al crear una orden (lectura). |
+| Asíncrona AMQP | ms-purchases -> RabbitMQ -> ms-inventory-stock | purchase.received incrementa stock (RF10). |
+| Asíncrona AMQP | ms-inventory-stock -> RabbitMQ -> ms-returns-audit | stock.movement.created alimenta el Kardex (RF07). |
+| Asíncrona AMQP | ms-returns-audit -> RabbitMQ -> ms-inventory-stock | return.processed reingresa stock si la devolución es reutilizable (RF11). |
 
-> **Decisión de diseño:** para no violar RNF02, ningún servicio hace joins contra bases ajenas. Los datos de otros dominios se referencian por identificador (`product_id`, `supplier_id`, `warehouse_id`) y, cuando hace falta mostrar un nombre, el Gateway o el frontend componen la respuesta.
+> **Decisión de diseño:** para no violar RNF02, ningún servicio hace joins contra bases ajenas. Los datos de otros dominios se referencian por identificador (product_id, supplier_id, warehouse_id) y, cuando hace falta mostrar un nombre, el Gateway o el frontend componen la respuesta.
 
 ### 1.3 Flujo 1: Recepción de una orden de compra (RF10)
 
