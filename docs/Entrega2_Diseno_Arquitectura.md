@@ -13,7 +13,7 @@
 2. Diseño de contratos de API por microservicio (OpenAPI/Swagger)
 3. Modelo de datos por microservicio (diagramas entidad-relación)
 4. Estrategia de contenerización y orquestación (Dockerfiles y manifiestos de Kubernetes)
-5. Bitácora de Uso de Inteligencia Artificial (IA) y Reflexión Final
+5. Bitácora de Uso de Inteligencia Artificial (IA)
 
 ---
 
@@ -67,6 +67,8 @@ flowchart TB
     GW -- "REST" --> SUPP
     GW -- "REST" --> PURCH
     GW -- "REST" --> AUDIT
+    PURCH -- "REST" --> PROD
+    PURCH -- "REST" --> SUPP
 
     AUTH --- DBA
     PROD --- DBP
@@ -79,7 +81,7 @@ flowchart TB
     STOCK -- "publica: stock.movement.created<br/>stock.low" --> MQ
     AUDIT -- "publica: return.processed" --> MQ
     MQ -- "consume: purchase.received" --> STOCK
-    MQ -- "consume: stock.movement.created<br/>return.processed" --> AUDIT
+    MQ -- "consume: stock.movement.created" --> AUDIT
     MQ -- "consume: return.processed" --> STOCK
 ```
 
@@ -106,7 +108,6 @@ flowchart TB
 | Asíncrona AMQP | ms-inventory-stock -> RabbitMQ -> ms-returns-audit | stock.movement.created alimenta el Kardex (RF07). |
 | Asíncrona AMQP | ms-returns-audit -> RabbitMQ -> ms-inventory-stock | return.processed reingresa stock si la devolución es reutilizable (RF11). |
 
-
 **Decisión de diseño:** para no violar RNF02, ningún servicio hace joins contra bases ajenas. Los datos de otros dominios se referencian por identificador (product_id, supplier_id, warehouse_id) y, cuando hace falta mostrar un nombre, el Gateway o el frontend componen la respuesta.
 
 ### 1.3 Flujo 1: Recepción de una orden de compra (RF10)
@@ -114,7 +115,7 @@ flowchart TB
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Op as Operario de Bodega
+    actor Op as WAREHOUSE_OPERATOR
     participant FE as React
     participant GW as API Gateway
     participant PU as ms-purchases
@@ -123,7 +124,7 @@ sequenceDiagram
     participant AU as ms-returns-audit
 
     Op->>FE: Confirmar recepción de OC-1024
-    FE->>GW: POST /purchases/orders/1024/receive (JWT)
+    FE->>GW: POST /api/v1/purchases/orders/1024/receive (JWT)
     GW->>GW: Valida JWT y rol
     GW->>PU: POST /orders/1024/receive
     PU->>PU: Estado: APPROVED → RECEIVED
@@ -132,7 +133,7 @@ sequenceDiagram
     PU--)MQ: purchase.received {orderId, items[], warehouseId}
     MQ--)ST: purchase.received
     ST->>ST: Incrementa saldo (db_stock)
-    ST--)MQ: stock.movement.created {tipo: ENTRADA}
+    ST--)MQ: stock.movement.created {type: ENTRY}
     MQ--)AU: stock.movement.created
     AU->>AU: INSERT en kardex (append-only)
 ```
@@ -142,7 +143,7 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Op as Operario de Bodega
+    actor Op as WAREHOUSE_OPERATOR
     participant FE as React
     participant GW as API Gateway
     participant ST as ms-inventory-stock
@@ -150,13 +151,13 @@ sequenceDiagram
     participant AU as ms-returns-audit
 
     Op->>FE: Transferir 20 uds. del SKU X de Bodega A a B
-    FE->>GW: POST /stock/transfers (JWT)
+    FE->>GW: POST /api/v1/stock/transfers (JWT)
     GW->>ST: POST /transfers
-    ST->>ST: Transacción local: resta en A y suma en B (valida saldo ≥ 0)
+    ST->>ST: Transacción local: resta en A y suma en B (valida saldo >= 0)
     ST-->>GW: 201 Created
     GW-->>FE: 201 Created
-    ST--)MQ: stock.movement.created (SALIDA_TRANSFERENCIA)
-    ST--)MQ: stock.movement.created (ENTRADA_TRANSFERENCIA)
+    ST--)MQ: stock.movement.created (TRANSFER_OUT)
+    ST--)MQ: stock.movement.created (TRANSFER_IN)
     MQ--)AU: ambos eventos
     AU->>AU: INSERT x2 en kardex
 ```
@@ -170,7 +171,7 @@ La transferencia es una sola transacción local dentro de db_stock, por eso no s
 | ms-returns-audit | Autenticación, catálogo, stock y compras. | Los eventos quedan en la cola de RabbitMQ y se consumen al volver el servicio. |
 | ms-suppliers | Stock y autenticación. | Solo se bloquea crear proveedores/órdenes nuevas. |
 | ms-purchases | Stock y autenticación. | Las recepciones se retoman al reiniciar. |
-| RabbitMQ | El saldo de stock se sigue actualizando (síncrono). | Se usa patrón Outbox en db_stock y db_purchases: el evento se guarda en la misma transacción y se reenvía cuando el broker vuelve. |
+| RabbitMQ | El saldo de stock se sigue actualizando (síncrono). | Se usa patrón Outbox en db_stock, db_purchases y db_audit: el evento se guarda en la misma transacción y se reenvía cuando el broker vuelve. |
 
 ---
 
@@ -180,12 +181,12 @@ Los contratos están en formato OpenAPI 3.0 dentro de la carpeta openapi/. Cada 
 
 | Microservicio | Archivo | Rutas por el Gateway | Requerimientos |
 | --- | --- | --- | --- |
-| ms-auth-users | openapi/ms-auth-users.yaml | /api/auth/**, /api/users/** | RF01, RNF07 |
-| ms-products | openapi/ms-products.yaml | /api/products/** | RF02 |
-| ms-inventory-stock | openapi/ms-inventory-stock.yaml | /api/stock/** | RF03-RF06 |
-| ms-suppliers | openapi/ms-suppliers.yaml | /api/suppliers/** | RF08 |
-| ms-purchases | openapi/ms-purchases.yaml | /api/purchases/** | RF09, RF10 |
-| ms-returns-audit | openapi/ms-returns-audit.yaml | /api/audit/**, /api/returns/** | RF07, RF11, RF12 |
+| ms-auth-users | openapi/ms-auth-users.yaml | /api/v1/auth/**, /api/v1/users/** | RF01, RNF07 |
+| ms-products | openapi/ms-products.yaml | /api/v1/products/** | RF02 |
+| ms-inventory-stock | openapi/ms-inventory-stock.yaml | /api/v1/stock/** | RF03-RF06 |
+| ms-suppliers | openapi/ms-suppliers.yaml | /api/v1/suppliers/** | RF08 |
+| ms-purchases | openapi/ms-purchases.yaml | /api/v1/purchases/** | RF09, RF10 |
+| ms-returns-audit | openapi/ms-returns-audit.yaml | /api/v1/audit/** | RF07, RF11, RF12 |
 
 ### 2.1 Resumen de endpoints
 
@@ -193,62 +194,61 @@ ms-auth-users
 
 | Método | Ruta | Rol | Descripción |
 | --- | --- | --- | --- |
-| POST | /auth/login | Público | Autentica y devuelve JWT. |
-| POST | /auth/refresh | Autenticado | Renueva el token. |
-| GET | /auth/validate | Interno (Gateway) | Valida token y devuelve claims. |
-| GET/POST | /users | Administrador | Lista / crea usuarios. |
-| PUT/DELETE | /users/{id} | Administrador | Edita / desactiva usuario. |
+| POST | /api/v1/auth/login | Público | Autentica y devuelve JWT. |
+| POST | /api/v1/auth/refresh | Autenticado | Renueva el token. |
+| GET | /api/v1/auth/validate | Interno (Gateway) | Valida token y devuelve claims. |
+| GET/POST | /api/v1/users | ADMIN | Lista / crea usuarios. |
+| PUT/DELETE | /api/v1/users/{id} | ADMIN | Edita / desactiva usuario. |
 
 ms-products
 
 | Método | Ruta | Rol | Descripción |
 | --- | --- | --- | --- |
-| GET | /products | Todos | Lista con filtros (sku, categoryId, q). |
-| POST | /products | Administrador | Crea producto (SKU y código de barras únicos). |
-| GET | /products/{id} | Todos | Detalle. |
-| PUT | /products/{id} | Administrador | Actualiza. |
-| DELETE | /products/{id} | Administrador | Baja lógica. |
-| GET/POST | /categories | Todos / Administrador | Categorías. |
+| GET | /api/v1/products | Todos | Lista con filtros (sku, categoryId, q). |
+| POST | /api/v1/products | ADMIN | Crea producto (SKU y código de barras únicos). |
+| GET | /api/v1/products/{id} | Todos | Detalle. |
+| PUT | /api/v1/products/{id} | ADMIN | Actualiza. |
+| DELETE | /api/v1/products/{id} | ADMIN | Baja lógica. |
+| GET/POST | /api/v1/categories | Todos / ADMIN | Categorías. |
 
 ms-inventory-stock
 
 | Método | Ruta | Rol | Descripción |
 | --- | --- | --- | --- |
-| GET | /stock | Todos | Saldos por producto y bodega. |
-| GET | /stock/{productId} | Todos | Saldo de un producto en ambas bodegas. |
-| POST | /stock/movements | Administrador, Operario | Entrada o salida; rechaza saldo negativo. |
-| POST | /transfers | Administrador, Operario | Transferencia Bodega A <-> B. |
-| GET | /stock/alerts | Todos | Productos bajo el mínimo o agotados. |
-| PUT | /stock/{productId}/min-threshold | Administrador | Umbral mínimo por bodega. |
-| GET | /warehouses | Todos | Las 2 bodegas. |
+| GET | /api/v1/stock | Todos | Saldos por producto y bodega. |
+| GET | /api/v1/stock/{productId} | Todos | Saldo de un producto en ambas bodegas. |
+| POST | /api/v1/stock/movements | ADMIN, WAREHOUSE_OPERATOR | Entrada o salida; rechaza saldo negativo. |
+| POST | /api/v1/stock/transfers | ADMIN, WAREHOUSE_OPERATOR | Transferencia Bodega A <-> B. |
+| GET | /api/v1/stock/alerts | Todos | Productos bajo el mínimo o agotados. |
+| PUT | /api/v1/stock/{productId}/min-threshold | ADMIN | Umbral mínimo por bodega. |
+| GET | /api/v1/warehouses | Todos | Las 2 bodegas. |
 
 ms-suppliers
 
 | Método | Ruta | Rol | Descripción |
 | --- | --- | --- | --- |
-| GET/POST | /suppliers | Todos / Administrador | Directorio. |
-| GET/PUT/DELETE | /suppliers/{id} | Todos / Administrador | Detalle, edición, baja. |
+| GET/POST | /api/v1/suppliers | Todos / ADMIN | Directorio. |
+| GET/PUT/DELETE | /api/v1/suppliers/{id} | Todos / ADMIN | Detalle, edición, baja. |
 
 ms-purchases
 
 | Método | Ruta | Rol | Descripción |
 | --- | --- | --- | --- |
-| GET/POST | /orders | Todos / Administrador | Lista / crea (estado DRAFT). |
-| GET | /orders/{id} | Todos | Detalle con ítems. |
-| POST | /orders/{id}/approve | Administrador | DRAFT -> APPROVED. |
-| POST | /orders/{id}/receive | Administrador, Operario | APPROVED -> RECEIVED y publica evento. |
-| POST | /orders/{id}/cancel | Administrador | Cancela si no fue recibida. |
+| GET/POST | /api/v1/purchases/orders | Todos / ADMIN | Lista / crea (estado DRAFT). |
+| GET | /api/v1/purchases/orders/{id} | Todos | Detalle con ítems. |
+| POST | /api/v1/purchases/orders/{id}/approve | ADMIN | DRAFT -> APPROVED. |
+| POST | /api/v1/purchases/orders/{id}/receive | ADMIN, WAREHOUSE_OPERATOR | APPROVED -> RECEIVED y publica evento. |
+| POST | /api/v1/purchases/orders/{id}/cancel | ADMIN | Cancela si no fue recibida. |
 
 ms-returns-audit
 
 | Método | Ruta | Rol | Descripción |
 | --- | --- | --- | --- |
-| GET | /kardex | Auditor, Administrador | Consulta con filtros (producto, bodega, fechas, tipo, usuario). |
-| GET | /kardex/{id} | Auditor, Administrador | Un registro. |
-| POST | /returns | Administrador, Operario | Registra devolución/garantía (reingreso o avería). |
-| GET | /returns | Todos | Lista de devoluciones. |
-| GET | /dashboard/metrics | Todos | Valor del inventario, agotados, movimientos del día (RF12). |
-
+| GET | /api/v1/audit/kardex | AUDITOR, ADMIN | Consulta con filtros (producto, bodega, fechas, tipo, usuario). |
+| GET | /api/v1/audit/kardex/{id} | AUDITOR, ADMIN | Un registro. |
+| POST | /api/v1/audit/returns | ADMIN, WAREHOUSE_OPERATOR | Registra devolución/garantía (reingreso o avería). |
+| GET | /api/v1/audit/returns | Todos | Lista de devoluciones. |
+| GET | /api/v1/audit/dashboard/metrics | Todos | Valor del inventario, agotados, movimientos del día (RF12). |
 
 ### 2.2 Convenciones comunes
 
@@ -334,7 +334,7 @@ erDiagram
 erDiagram
     WAREHOUSE ||--o{ STOCK_LEVEL : "almacena"
     WAREHOUSE ||--o{ STOCK_MOVEMENT : "origen/destino"
-    STOCK_TRANSFER ||--|{ STOCK_MOVEMENT : "genera"
+    STOCK_TRANSFER |o--o{ STOCK_MOVEMENT : "genera"
 
     WAREHOUSE {
         int id PK
@@ -493,6 +493,13 @@ erDiagram
         string disposition "RESTOCK | DAMAGED"
         int warehouse_id
     }
+    OUTBOX_EVENT {
+        uuid id PK
+        string event_type
+        json payload
+        boolean published
+        timestamp created_at
+    }
 ```
 
 **Inalterabilidad del Kardex (RNF12):**
@@ -539,7 +546,6 @@ docker/
 └── docker-compose.yml          # entorno local completo (RNF14)
 ```
 
-
 ### 4.2 Orquestación con Kubernetes
 
 | Recurso | Uso |
@@ -584,7 +590,7 @@ kubectl -n logitech get pods
 
 ---
 
-## . Bitácora de Uso de Inteligencia Artificial (IA)
+## 5. Bitácora de Uso de Inteligencia Artificial (IA)
 
 | Proyecto | Sistema de Gestión de Inventarios - LogiTech Solutions S.A.S. |
 | --- | --- |
@@ -597,5 +603,5 @@ kubectl -n logitech get pods
 | 17/10/2026 | Andrés Felipe Gálvez Carmona | Gemini / Claude | Generación del esqueleto Mermaid para la arquitectura de microservicios e Ingress. | Genera un diagrama Mermaid flowchart TB que muestre el cliente React, Ingress, API Gateway, 6 microservicios con sus BD aisladas y RabbitMQ. | Alto | Se obtuvo la estructura inicial en Mermaid y se corrigió manualmente el enrutamiento de Service Discovery con CoreDNS y los nombres de los endpoints. |
 | 17/10/2026 | Andrés Felipe Gálvez Carmona | Gemini| Estructuración de especificaciones OpenAPI 3.0 para ms-auth-users y ms-products. | Crea el esquema OpenAPI 3.0 en YAML para los endpoints de login, validación de JWT y CRUD de productos con respuestas 200, 400 y 409. | Medio | Se validó la sintaxis en Swagger Editor y se agregaron los campos específicos del caso de estudio de LogiTech (SKU, código de barras). |
 | 20/10/2026 | Mariana Duque Giraldo | Gemini | Diseño de triggers de base de datos PostgreSQL para garantizar la inalterabilidad Append-Only del Kardex. | Escribe un script SQL en PostgreSQL con triggers que impidan UPDATE y DELETE en la tabla kardex_entry para cumplir con un RNF de auditoría inmutable. | Alto | Se implementó el trigger en db_audit y la función plpgsql, añadiendo además la restricción REVOKE a nivel de permisos de usuario de BD. |
-| 20/10/2026 | Andrés Felipe Gálvez Carmona | Gemini | Auditoría final de la Entrega 2 | Revisa si la entrega 2 cumple con todo lo que exige el PDF del proyecto.  | Alto | Se validó el cumplimiento del 100% de la rúbrica. Se tomó la decisión crítica de eliminar "Nginx" del Dockerfile por exceder el alcance académico, optando por Node.js. Se apropiaron los conceptos de manifiestos YAML para una defensa técnica sólida. |
+| 20/10/2026 | Andrés Felipe Gálvez Carmona | Gemini | Auditoría final de la Entrega 2 | Revisa si la entrega 2 cumple con todo lo que exige el PDF del proyecto. | Alto | Se validó el cumplimiento del 100% de la rúbrica. Se tomó la decisión crítica de eliminar "Nginx" del Dockerfile por exceder el alcance académico, optando por Node.js. Se apropiaron los conceptos de manifiestos YAML para una defensa técnica sólida. |
 | 23/10/2026 | Mariana Duque Giraldo | Gemini | Formateo y unificación del documento de arquitectura en sintaxis Markdown (.md). | Dame el doc .md completo y unificado con toda la estructura solicitada y tablas limpias para copiar y pegar. | Bajo | Se logró consolidar toda la investigación, diagramas Mermaid, tablas OpenAPI y modelos ERD en un único archivo estándar, respetando la jerarquía visual lista para alojar en GitHub. |
