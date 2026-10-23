@@ -106,7 +106,8 @@ flowchart TB
 | Asíncrona AMQP | ms-inventory-stock -> RabbitMQ -> ms-returns-audit | stock.movement.created alimenta el Kardex (RF07). |
 | Asíncrona AMQP | ms-returns-audit -> RabbitMQ -> ms-inventory-stock | return.processed reingresa stock si la devolución es reutilizable (RF11). |
 
-> **Decisión de diseño:** para no violar RNF02, ningún servicio hace joins contra bases ajenas. Los datos de otros dominios se referencian por identificador (product_id, supplier_id, warehouse_id) y, cuando hace falta mostrar un nombre, el Gateway o el frontend componen la respuesta.
+
+**Decisión de diseño:** para no violar RNF02, ningún servicio hace joins contra bases ajenas. Los datos de otros dominios se referencian por identificador (product_id, supplier_id, warehouse_id) y, cuando hace falta mostrar un nombre, el Gateway o el frontend componen la respuesta.
 
 ### 1.3 Flujo 1: Recepción de una orden de compra (RF10)
 
@@ -160,7 +161,7 @@ sequenceDiagram
     AU->>AU: INSERT x2 en kardex
 ```
 
-La transferencia es **una sola transacción local** dentro de `db_stock`, por eso no se necesita una saga distribuida: ambas bodegas viven en el mismo servicio.
+La transferencia es una sola transacción local dentro de db_stock, por eso no se necesita una saga distribuida: ambas bodegas viven en el mismo servicio.
 
 ### 1.5 Tolerancia a fallas (RNF09)
 
@@ -169,94 +170,93 @@ La transferencia es **una sola transacción local** dentro de `db_stock`, por es
 | ms-returns-audit | Autenticación, catálogo, stock y compras. | Los eventos quedan en la cola de RabbitMQ y se consumen al volver el servicio. |
 | ms-suppliers | Stock y autenticación. | Solo se bloquea crear proveedores/órdenes nuevas. |
 | ms-purchases | Stock y autenticación. | Las recepciones se retoman al reiniciar. |
-| RabbitMQ | El saldo de stock se sigue actualizando (síncrono). | Se usa patrón **Outbox** en `db_stock` y `db_purchases`: el evento se guarda en la misma transacción y se reenvía cuando el broker vuelve. |
+| RabbitMQ | El saldo de stock se sigue actualizando (síncrono). | Se usa patrón Outbox en db_stock y db_purchases: el evento se guarda en la misma transacción y se reenvía cuando el broker vuelve. |
 
 ---
 
 ## 2. Diseño de contratos de API por microservicio (OpenAPI/Swagger)
 
-Los contratos están en formato **OpenAPI 3.0** dentro de la carpeta `openapi/`. Cada servicio publica su Swagger UI en `/docs` (RNF13).
+Los contratos están en formato OpenAPI 3.0 dentro de la carpeta openapi/. Cada servicio publica su Swagger UI en /docs (RNF13).
 
 | Microservicio | Archivo | Rutas por el Gateway | Requerimientos |
 | --- | --- | --- | --- |
-| ms-auth-users | `openapi/ms-auth-users.yaml` | `/api/auth/**`, `/api/users/**` | RF01, RNF07 |
-| ms-products | `openapi/ms-products.yaml` | `/api/products/**` | RF02 |
-| ms-inventory-stock | `openapi/ms-inventory-stock.yaml` | `/api/stock/**` | RF03-RF06 |
-| ms-suppliers | `openapi/ms-suppliers.yaml` | `/api/suppliers/**` | RF08 |
-| ms-purchases | `openapi/ms-purchases.yaml` | `/api/purchases/**` | RF09, RF10 |
-| ms-returns-audit | `openapi/ms-returns-audit.yaml` | `/api/audit/**`, `/api/returns/**` | RF07, RF11, RF12 |
+| ms-auth-users | openapi/ms-auth-users.yaml | /api/auth/**, /api/users/** | RF01, RNF07 |
+| ms-products | openapi/ms-products.yaml | /api/products/** | RF02 |
+| ms-inventory-stock | openapi/ms-inventory-stock.yaml | /api/stock/** | RF03-RF06 |
+| ms-suppliers | openapi/ms-suppliers.yaml | /api/suppliers/** | RF08 |
+| ms-purchases | openapi/ms-purchases.yaml | /api/purchases/** | RF09, RF10 |
+| ms-returns-audit | openapi/ms-returns-audit.yaml | /api/audit/**, /api/returns/** | RF07, RF11, RF12 |
 
 ### 2.1 Resumen de endpoints
 
-**ms-auth-users**
+ms-auth-users
 
 | Método | Ruta | Rol | Descripción |
 | --- | --- | --- | --- |
-| POST | `/auth/login` | Público | Autentica y devuelve JWT. |
-| POST | `/auth/refresh` | Autenticado | Renueva el token. |
-| GET | `/auth/validate` | Interno (Gateway) | Valida token y devuelve claims. |
-| GET/POST | `/users` | Administrador | Lista / crea usuarios. |
-| PUT/DELETE | `/users/{id}` | Administrador | Edita / desactiva usuario. |
+| POST | /auth/login | Público | Autentica y devuelve JWT. |
+| POST | /auth/refresh | Autenticado | Renueva el token. |
+| GET | /auth/validate | Interno (Gateway) | Valida token y devuelve claims. |
+| GET/POST | /users | Administrador | Lista / crea usuarios. |
+| PUT/DELETE | /users/{id} | Administrador | Edita / desactiva usuario. |
 
-**ms-products**
-
-| Método | Ruta | Rol | Descripción |
-| --- | --- | --- | --- |
-| GET | `/products` | Todos | Lista con filtros (`sku`, `categoryId`, `q`). |
-| POST | `/products` | Administrador | Crea producto (SKU y código de barras únicos). |
-| GET | `/products/{id}` | Todos | Detalle. |
-| PUT | `/products/{id}` | Administrador | Actualiza. |
-| DELETE | `/products/{id}` | Administrador | Baja lógica. |
-| GET/POST | `/categories` | Todos / Administrador | Categorías. |
-
-**ms-inventory-stock**
+ms-products
 
 | Método | Ruta | Rol | Descripción |
 | --- | --- | --- | --- |
-| GET | `/stock` | Todos | Saldos por producto y bodega. |
-| GET | `/stock/{productId}` | Todos | Saldo de un producto en ambas bodegas. |
-| POST | `/stock/movements` | Administrador, Operario | Entrada o salida; rechaza saldo negativo. |
-| POST | `/transfers` | Administrador, Operario | Transferencia Bodega A ↔ B. |
-| GET | `/stock/alerts` | Todos | Productos bajo el mínimo o agotados. |
-| PUT | `/stock/{productId}/min-threshold` | Administrador | Umbral mínimo por bodega. |
-| GET | `/warehouses` | Todos | Las 2 bodegas. |
+| GET | /products | Todos | Lista con filtros (sku, categoryId, q). |
+| POST | /products | Administrador | Crea producto (SKU y código de barras únicos). |
+| GET | /products/{id} | Todos | Detalle. |
+| PUT | /products/{id} | Administrador | Actualiza. |
+| DELETE | /products/{id} | Administrador | Baja lógica. |
+| GET/POST | /categories | Todos / Administrador | Categorías. |
 
-**ms-suppliers**
-
-| Método | Ruta | Rol | Descripción |
-| --- | --- | --- | --- |
-| GET/POST | `/suppliers` | Todos / Administrador | Directorio. |
-| GET/PUT/DELETE | `/suppliers/{id}` | Todos / Administrador | Detalle, edición, baja. |
-
-**ms-purchases**
+ms-inventory-stock
 
 | Método | Ruta | Rol | Descripción |
 | --- | --- | --- | --- |
-| GET/POST | `/orders` | Todos / Administrador | Lista / crea (estado `DRAFT`). |
-| GET | `/orders/{id}` | Todos | Detalle con ítems. |
-| POST | `/orders/{id}/approve` | Administrador | `DRAFT` → `APPROVED`. |
-| POST | `/orders/{id}/receive` | Administrador, Operario | `APPROVED` → `RECEIVED` y publica evento. |
-| POST | `/orders/{id}/cancel` | Administrador | Cancela si no fue recibida. |
+| GET | /stock | Todos | Saldos por producto y bodega. |
+| GET | /stock/{productId} | Todos | Saldo de un producto en ambas bodegas. |
+| POST | /stock/movements | Administrador, Operario | Entrada o salida; rechaza saldo negativo. |
+| POST | /transfers | Administrador, Operario | Transferencia Bodega A <-> B. |
+| GET | /stock/alerts | Todos | Productos bajo el mínimo o agotados. |
+| PUT | /stock/{productId}/min-threshold | Administrador | Umbral mínimo por bodega. |
+| GET | /warehouses | Todos | Las 2 bodegas. |
 
-**ms-returns-audit**
+ms-suppliers
 
 | Método | Ruta | Rol | Descripción |
 | --- | --- | --- | --- |
-| GET | `/kardex` | Auditor, Administrador | Consulta con filtros (producto, bodega, fechas, tipo, usuario). |
-| GET | `/kardex/{id}` | Auditor, Administrador | Un registro. |
-| POST | `/returns` | Administrador, Operario | Registra devolución/garantía (reingreso o avería). |
-| GET | `/returns` | Todos | Lista de devoluciones. |
-| GET | `/dashboard/metrics` | Todos | Valor del inventario, agotados, movimientos del día (RF12). |
+| GET/POST | /suppliers | Todos / Administrador | Directorio. |
+| GET/PUT/DELETE | /suppliers/{id} | Todos / Administrador | Detalle, edición, baja. |
 
-> **Nota:** `ms-returns-audit` no expone `PUT` ni `DELETE` sobre el Kardex (RNF12).
+ms-purchases
+
+| Método | Ruta | Rol | Descripción |
+| --- | --- | --- | --- |
+| GET/POST | /orders | Todos / Administrador | Lista / crea (estado DRAFT). |
+| GET | /orders/{id} | Todos | Detalle con ítems. |
+| POST | /orders/{id}/approve | Administrador | DRAFT -> APPROVED. |
+| POST | /orders/{id}/receive | Administrador, Operario | APPROVED -> RECEIVED y publica evento. |
+| POST | /orders/{id}/cancel | Administrador | Cancela si no fue recibida. |
+
+ms-returns-audit
+
+| Método | Ruta | Rol | Descripción |
+| --- | --- | --- | --- |
+| GET | /kardex | Auditor, Administrador | Consulta con filtros (producto, bodega, fechas, tipo, usuario). |
+| GET | /kardex/{id} | Auditor, Administrador | Un registro. |
+| POST | /returns | Administrador, Operario | Registra devolución/garantía (reingreso o avería). |
+| GET | /returns | Todos | Lista de devoluciones. |
+| GET | /dashboard/metrics | Todos | Valor del inventario, agotados, movimientos del día (RF12). |
+
 
 ### 2.2 Convenciones comunes
 
-- **Seguridad:** esquema `bearerAuth` (JWT) en todo menos `/auth/login`.
-- **Errores:** formato único `{ "code", "message", "details", "timestamp", "path" }`.
-- **Paginación:** `?page=0&size=20`; respuesta con `content`, `page`, `size`, `totalElements`.
-- **Códigos HTTP:** 200, 201, 204, 400, 401, 403, 404, 409 (conflicto: SKU duplicado, saldo insuficiente), 422, 500.
-- **Versionado:** prefijo `/api/v1` en el Gateway.
+- Seguridad: esquema bearerAuth (JWT) en todo menos /auth/login.
+- Errores: formato único { "code", "message", "details", "timestamp", "path" }.
+- Paginación: ?page=0&size=20; respuesta con content, page, size, totalElements.
+- Códigos HTTP: 200, 201, 204, 400, 401, 403, 404, 409 (conflicto: SKU duplicado, saldo insuficiente), 422, 500.
+- Versionado: prefijo /api/v1 en el Gateway.
 
 ---
 
