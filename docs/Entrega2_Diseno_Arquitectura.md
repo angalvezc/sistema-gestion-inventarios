@@ -262,7 +262,7 @@ ms-returns-audit
 
 ## 3. Modelo de datos por microservicio (diagramas entidad-relación)
 
-Las referencias entre servicios (`product_id`, `supplier_id`, etc.) son **identificadores lógicos sin llave foránea**, porque las tablas viven en bases distintas.
+Las referencias entre servicios (product_id, supplier_id, etc.) son identificadores lógicos sin llave foránea, porque las tablas viven en bases distintas.
 
 ### 3.1 db_auth (ms-auth-users)
 
@@ -380,7 +380,7 @@ erDiagram
     }
 ```
 
-`OUTBOX_EVENT` no se relaciona con otras tablas: guarda los eventos pendientes de enviar a RabbitMQ.
+OUTBOX_EVENT no se relaciona con otras tablas: guarda los eventos pendientes de enviar a RabbitMQ.
 
 ### 3.4 db_suppliers (ms-suppliers)
 
@@ -513,7 +513,7 @@ BEFORE UPDATE OR DELETE ON kardex_entry
 FOR EACH ROW EXECUTE FUNCTION kardex_block_changes();
 ```
 
-El campo `event_id` único evita registros duplicados si RabbitMQ reentrega un mensaje (consumo idempotente).
+El campo event_id único evita registros duplicados si RabbitMQ reentrega un mensaje (consumo idempotente).
 
 ---
 
@@ -524,7 +524,7 @@ El campo `event_id` único evita registros duplicados si RabbitMQ reentrega un m
 | Decisión | Detalle |
 | --- | --- |
 | Imágenes | Una por componente: `logitech/frontend`, `logitech/api-gateway` y una por microservicio. |
-| Dockerfile | Multi-stage (compilar y luego copiar solo el resultado) para imágenes pequeñas. |
+| Dockerfile | Uso de imágenes base oficiales y ligeras (Alpine Linux) para minimizar el peso del contenedor. |
 | Seguridad | Usuario no root, sin secretos dentro de la imagen. |
 | Salud | Cada servicio expone `/health/live` y `/health/ready`. |
 | Configuración | Variables de entorno (12-factor); en Kubernetes vía `ConfigMap` y `Secret`. |
@@ -532,28 +532,27 @@ El campo `event_id` único evita registros duplicados si RabbitMQ reentrega un m
 
 Archivos entregados:
 
-```
+```text
 docker/
 ├── Dockerfile.microservice     # plantilla compartida por los 6 servicios y el gateway
-├── Dockerfile.frontend         # build de React + Nginx
+├── Dockerfile.frontend         # build de React corriendo sobre Node.js
 └── docker-compose.yml          # entorno local completo (RNF14)
 ```
 
-> **Supuesto a confirmar:** los Dockerfiles asumen backend en **Node.js 20**. Si su equipo eligió otro lenguaje (Java/Spring, .NET, Python), solo cambia el bloque de compilación; la estructura multi-stage se mantiene.
 
 ### 4.2 Orquestación con Kubernetes
 
 | Recurso | Uso |
 | --- | --- |
-| `Namespace` | `logitech` aísla todo el sistema. |
-| `Deployment` | Uno por microservicio, gateway y frontend. Mínimo 2 réplicas en servicios críticos (RNF04). |
-| `StatefulSet` | Bases de datos y RabbitMQ, con `PersistentVolumeClaim`. |
-| `Service` (ClusterIP) | Descubrimiento de servicios por nombre. |
-| `Ingress` | Entrada externa hacia el frontend y el gateway. |
-| `ConfigMap` / `Secret` | Configuración y credenciales (JWT, contraseñas de BD). |
-| `HorizontalPodAutoscaler` | Escala por CPU/memoria (RNF10). Más agresivo en `ms-inventory-stock`. |
-| `readinessProbe` / `livenessProbe` | Solo recibe tráfico un pod listo; se reinicia el que no responde. |
-| `NetworkPolicy` | Cada base de datos acepta tráfico únicamente de su microservicio (refuerza RNF02). |
+| Namespace | logitech aísla todo el sistema. |
+| Deployment | Uno por microservicio, gateway y frontend. Mínimo 2 réplicas en servicios críticos (RNF04). |
+| StatefulSet | Bases de datos y RabbitMQ, con PersistentVolumeClaim. |
+| Service (ClusterIP) | Descubrimiento de servicios por nombre. |
+| Ingress | Entrada externa hacia el frontend y el gateway. |
+| ConfigMap / Secret | Configuración y credenciales (JWT, contraseñas de BD). |
+| HorizontalPodAutoscaler | Escala por CPU/memoria (RNF10). Más agresivo en ms-inventory-stock. |
+| readinessProbe / livenessProbe | Solo recibe tráfico un pod listo; se reinicia el que no responde. |
+| NetworkPolicy | Cada base de datos acepta tráfico únicamente de su microservicio (refuerza RNF02). |
 
 Archivos entregados en `k8s/`:
 
@@ -566,7 +565,7 @@ k8s/
 └── 40-network-policies.yaml    # aislamiento de bases de datos
 ```
 
-El manifiesto `20-ms-inventory-stock.yaml` sirve de plantilla para los otros cinco servicios: solo cambian nombre, puerto e imagen.
+El manifiesto 20-ms-inventory-stock.yaml sirve de plantilla para los otros cinco servicios: solo cambian nombre, puerto e imagen.
 
 ### 4.3 Orden de despliegue
 
@@ -585,16 +584,20 @@ kubectl -n logitech get pods
 
 ---
 
-## 5. Plan de las 15 pruebas de rendimiento por integrante
+## . Bitácora de Uso de Inteligencia Artificial (IA) y Reflexión Final
 
-Ver archivo **`Plan_Pruebas_Rendimiento.md`**: 15 pruebas para cada integrante (30 en total), con herramienta, escenario, métrica y criterio de aceptación enlazado a los RNF.
+| Proyecto | Sistema de Gestión de Inventarios - LogiTech Solutions S.A.S. |
+| --- | --- |
+| Equipo / Integrantes | Mariana Duque Giraldo, Andrés Felipe Gálvez Carmona |
+| Entrega N.° | 2 |
+| Periodo cubierto | 16/10/2026 - 26/10/2026 |
 
-## 6. Actividad de los integrantes en GitHub
-
-Esta evidencia **no se puede generar desde un documento**: sale de los commits reales. Recomendación para el equipo:
-
-- Repositorio con una carpeta por servicio y las carpetas `docs/`, `docker/`, `k8s/` y `openapi/`.
-- Ramas por funcionalidad (`feature/...`) y *pull requests* revisados por el otro integrante.
-- Commits pequeños con mensajes claros (por ejemplo `docs: agrega ERD de db_stock`).
-- Que **ambos** integrantes tengan commits propios en esta fase (con su propio usuario de Git).
-- Captura de *Insights → Contributors* y del historial de commits como evidencia.
+| Fecha | Integrante | Herramienta de IA | Tarea / Actividad Apoyada | Prompt Utilizado (Resumen) | Nivel de Intervención Humana | Resultado / Aprendizaje |
+| --- | --- | --- | --- | --- | --- | --- |
+| 17/10/2026 | Andrés Felipe Gálvez Carmona | Gemini / Claude | Generación del esqueleto Mermaid para la arquitectura de microservicios e Ingress. | Genera un diagrama Mermaid flowchart TB que muestre el cliente React, Ingress, API Gateway, 6 microservicios con sus BD aisladas y RabbitMQ. | Alto | Se obtuvo la estructura inicial en Mermaid y se corrigió manualmente el enrutamiento de Service Discovery con CoreDNS y los nombres de los endpoints. |
+| 17/10/2026 | Andrés Felipe Gálvez Carmona | Gemini| Estructuración de especificaciones OpenAPI 3.0 para ms-auth-users y ms-products. | Crea el esquema OpenAPI 3.0 en YAML para los endpoints de login, validación de JWT y CRUD de productos con respuestas 200, 400 y 409. | Medio | Se validó la sintaxis en Swagger Editor y se agregaron los campos específicos del caso de estudio de LogiTech (SKU, código de barras). |
+| 20/10/2026 | Mariana Duque Giraldo | Gemini | Diseño de triggers de base de datos PostgreSQL para garantizar la inalterabilidad Append-Only del Kardex. | Escribe un script SQL en PostgreSQL con triggers que impidan UPDATE y DELETE en la tabla kardex_entry para cumplir con un RNF de auditoría inmutable. | Alto | Se implementó el trigger en db_audit y la función plpgsql, añadiendo además la restricción REVOKE a nivel de permisos de usuario de BD. |
+| 20/10/2026 | Mariana Duque Giraldo | Gemini | Estructuración de manifiestos de Kubernetes (StatefulSet, Deployment y HPA). | ¿Me armas un YAML de Kubernetes? Necesito un microservicio con HPA que escale por CPU y, aparte, un StatefulSet para PostgreSQL. | Medio | Se ajustaron las solicitudes de recursos (requests/limits) de CPU/memoria y se configuró la estrategia de rotación de pods. 
+| 20/10/2026 | Andrés Felipe Gálvez Carmona | Gemini | Auditoría final de la Entrega 2 | Revisa si la entrega 2 cumple con todo lo que exige el PDF del proyecto.  | Alto | Se validó el cumplimiento del 100% de la rúbrica. Se tomó la decisión crítica de eliminar "Nginx" del Dockerfile por exceder el alcance académico, optando por Node.js. Se apropiaron los conceptos de manifiestos YAML para una defensa técnica sólida. |
+| 23/10/2026 | Mariana Duque Giraldo | Gemini | Formateo y unificación del documento de arquitectura en sintaxis Markdown (.md). | Dame el doc .md completo y unificado con toda la estructura solicitada y tablas limpias para copiar y pegar. | Bajo | Se logró consolidar toda la investigación, diagramas Mermaid, tablas OpenAPI y modelos ERD en un único archivo estándar, respetando la jerarquía visual lista para alojar en GitHub. |
+## Actividad de los integrantes en GitHub
