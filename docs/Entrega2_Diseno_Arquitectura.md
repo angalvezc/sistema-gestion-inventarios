@@ -584,7 +584,7 @@ kubectl -n logitech get pods
 
 ---
 
-## . Bitácora de Uso de Inteligencia Artificial (IA) y Reflexión Final
+## . Bitácora de Uso de Inteligencia Artificial (IA)
 
 | Proyecto | Sistema de Gestión de Inventarios - LogiTech Solutions S.A.S. |
 | --- | --- |
@@ -597,6 +597,5 @@ kubectl -n logitech get pods
 | 17/10/2026 | Andrés Felipe Gálvez Carmona | Gemini / Claude | Generación del esqueleto Mermaid para la arquitectura de microservicios e Ingress. | Genera un diagrama Mermaid flowchart TB que muestre el cliente React, Ingress, API Gateway, 6 microservicios con sus BD aisladas y RabbitMQ. | Alto | Se obtuvo la estructura inicial en Mermaid y se corrigió manualmente el enrutamiento de Service Discovery con CoreDNS y los nombres de los endpoints. |
 | 17/10/2026 | Andrés Felipe Gálvez Carmona | Gemini| Estructuración de especificaciones OpenAPI 3.0 para ms-auth-users y ms-products. | Crea el esquema OpenAPI 3.0 en YAML para los endpoints de login, validación de JWT y CRUD de productos con respuestas 200, 400 y 409. | Medio | Se validó la sintaxis en Swagger Editor y se agregaron los campos específicos del caso de estudio de LogiTech (SKU, código de barras). |
 | 20/10/2026 | Mariana Duque Giraldo | Gemini | Diseño de triggers de base de datos PostgreSQL para garantizar la inalterabilidad Append-Only del Kardex. | Escribe un script SQL en PostgreSQL con triggers que impidan UPDATE y DELETE en la tabla kardex_entry para cumplir con un RNF de auditoría inmutable. | Alto | Se implementó el trigger en db_audit y la función plpgsql, añadiendo además la restricción REVOKE a nivel de permisos de usuario de BD. |
-| 20/10/2026 | Mariana Duque Giraldo | Gemini | Estructuración de manifiestos de Kubernetes (StatefulSet, Deployment y HPA). | ¿Me armas un YAML de Kubernetes? Necesito un microservicio con HPA que escale por CPU y, aparte, un StatefulSet para PostgreSQL. | Medio | Se ajustaron las solicitudes de recursos (requests/limits) de CPU/memoria y se configuró la estrategia de rotación de pods. 
 | 20/10/2026 | Andrés Felipe Gálvez Carmona | Gemini | Auditoría final de la Entrega 2 | Revisa si la entrega 2 cumple con todo lo que exige el PDF del proyecto.  | Alto | Se validó el cumplimiento del 100% de la rúbrica. Se tomó la decisión crítica de eliminar "Nginx" del Dockerfile por exceder el alcance académico, optando por Node.js. Se apropiaron los conceptos de manifiestos YAML para una defensa técnica sólida. |
 | 23/10/2026 | Mariana Duque Giraldo | Gemini | Formateo y unificación del documento de arquitectura en sintaxis Markdown (.md). | Dame el doc .md completo y unificado con toda la estructura solicitada y tablas limpias para copiar y pegar. | Bajo | Se logró consolidar toda la investigación, diagramas Mermaid, tablas OpenAPI y modelos ERD en un único archivo estándar, respetando la jerarquía visual lista para alojar en GitHub. |
