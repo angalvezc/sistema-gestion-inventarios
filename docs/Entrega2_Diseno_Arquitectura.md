@@ -554,7 +554,7 @@ docker/
 | readinessProbe / livenessProbe | Solo recibe tráfico un pod listo; se reinicia el que no responde. |
 | NetworkPolicy | Cada base de datos acepta tráfico únicamente de su microservicio (refuerza RNF02). |
 
-Archivos entregados en `k8s/`:
+Archivos entregados en k8s/:
 
 ```
 k8s/
