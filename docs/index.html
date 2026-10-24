@@ -12,6 +12,8 @@
   <body>
     <!-- Ruta relativa correcta dentro de docs -->
     <redoc spec-url='./openapi/ms-inventory-stock.yaml'></redoc>
-    <script src="https://cdn.redoc.ly/redoc/latest/bundles/redoc.standalone.js"> </script>
+    
+    <!-- Se cambia el CDN a una versión estable (2.1.2) para evitar el error de import.meta -->
+    <script src="https://cdn.jsdelivr.net/npm/redoc@2.1.2/bundles/redoc.standalone.js"></script>
   </body>
 </html>
