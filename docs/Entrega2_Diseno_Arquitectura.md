@@ -177,6 +177,8 @@ La transferencia es una sola transacción local dentro de db_stock, por eso no s
 
 ## 2. Diseño de contratos de API por microservicio (OpenAPI/Swagger)
 
+**[Ver Documentación Interactiva de APIs (GitHub Pages)](https://angalvezc.github.io/sistema-gestion-inventarios/)**
+
 Los contratos están en formato OpenAPI 3.0 dentro de la carpeta openapi/. Cada servicio publica su Swagger UI en /docs (RNF13).
 
 | Microservicio | Archivo | Rutas por el Gateway | Requerimientos |
