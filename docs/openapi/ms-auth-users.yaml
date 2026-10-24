@@ -38,6 +38,41 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/User'
+  /users/{id}:
+    put:
+      summary: Actualizar datos de un usuario (ADMIN)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+      responses:
+        '200':
+          description: Usuario actualizado
+    delete:
+      summary: Desactivar usuario - Baja lógica (ADMIN)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Usuario desactivado correctamente
 components:
   securitySchemes:
     bearerAuth:
@@ -84,3 +119,4 @@ components:
         lastLoginAt:
           type: string
           format: date-time
+          
