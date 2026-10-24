@@ -1,19 +1,59 @@
 <!DOCTYPE html>
 <html lang="es">
   <head>
-    <title>LogiTech Solutions S.A.S. - Documentación de APIs</title>
+    <title>LogiTech Solutions S.A.S. - APIs</title>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="https://fonts.googleapis.com/css?family=Montserrat:300,400,700|Roboto:300,400,500" rel="stylesheet">
     <style>
-      body { margin: 0; padding: 0; }
+      body { margin: 0; padding: 0; font-family: 'Montserrat', sans-serif; }
+      .top-bar {
+        background-color: #20232a;
+        color: white;
+        padding: 15px 20px;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+      }
+      select {
+        padding: 8px;
+        font-size: 14px;
+        border-radius: 4px;
+        border: none;
+        background-color: #fff;
+      }
     </style>
   </head>
   <body>
-    <!-- Ruta relativa correcta dentro de docs -->
-    <redoc spec-url='./openapi/ms-inventory-stock.yaml'></redoc>
-    
-    <!-- Se cambia el CDN a una versión estable (2.1.2) para evitar el error de import.meta -->
+    <!-- Barra superior de navegación -->
+    <div class="top-bar">
+      <strong>LogiTech API Docs:</strong>
+      <select id="api-selector" onchange="loadApi()">
+        <option value="./openapi/ms-auth-users.yaml">ms-auth-users</option>
+        <option value="./openapi/ms-products.yaml">ms-products</option>
+        <option value="./openapi/ms-inventory-stock.yaml" selected>ms-inventory-stock</option>
+        <option value="./openapi/ms-suppliers.yaml">ms-suppliers</option>
+        <option value="./openapi/ms-purchases.yaml">ms-purchases</option>
+        <option value="./openapi/ms-returns-audit.yaml">ms-returns-audit</option>
+      </select>
+    </div>
+
+    <!-- Contenedor donde Redoc dibujará la API seleccionada -->
+    <div id="redoc-container"></div>
+
     <script src="https://cdn.jsdelivr.net/npm/redoc@2.1.2/bundles/redoc.standalone.js"></script>
+    <script>
+      function loadApi() {
+        const selectedUrl = document.getElementById('api-selector').value;
+        // Inicializa Redoc en el contenedor con la URL seleccionada
+        Redoc.init(selectedUrl, {
+          scrollYOffset: 60,
+          theme: { colors: { primary: { main: '#32329f' } } }
+        }, document.getElementById('redoc-container'));
+      }
+      
+      // Cargar la API por defecto al abrir la página
+      loadApi();
+    </script>
   </body>
 </html>
