@@ -1,37 +1,108 @@
-openapi: 3.0.3
+openapi: 3.0.0
 info:
   title: ms-inventory-stock API
   version: 1.0.0
-  description: Gestión de saldos de inventario en Bodega A y Bodega B, movimientos y transferencias.
+  description: Gestión de saldos, movimientos y transferencias entre bodegas.
+servers:
+  - url: /api/v1
 paths:
-  /api/v1/stock:
+  /stock:
     get:
-      summary: Obtener saldos de inventario por bodega y producto
+      summary: Obtener saldos de inventario
+      parameters:
+        - name: warehouseId
+          in: query
+          schema:
+            type: integer
       responses:
         '200':
           description: Saldos actuales
-  /api/v1/stock/transfers:
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StockLevel'
+  /stock/movements:
     post:
-      summary: Realizar transferencia entre bodegas
+      summary: Registrar entrada o salida manual de stock
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                fromWarehouseId:
-                  type: integer
-                  example: 1
-                toWarehouseId:
-                  type: integer
-                  example: 2
-                productId:
-                  type: string
-                  format: uuid
-                quantity:
-                  type: integer
-                  example: 20
+              $ref: '#/components/schemas/MovementRequest'
       responses:
         '201':
-          description: Transferencia efectuada exitosamente
+          description: Movimiento registrado
+        '409':
+          description: Saldo insuficiente para la salida
+  /stock/transfers:
+    post:
+      summary: Realizar transferencia entre bodegas
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransferRequest'
+      responses:
+        '201':
+          description: Transferencia efectuada
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    StockLevel:
+      type: object
+      properties:
+        id:
+          type: integer
+        productId:
+          type: string
+          format: uuid
+        warehouseId:
+          type: integer
+        quantity:
+          type: integer
+        minThreshold:
+          type: integer
+        updatedAt:
+          type: string
+          format: date-time
+    MovementRequest:
+      type: object
+      required: [productId, warehouseId, type, quantity, reference]
+      properties:
+        productId:
+          type: string
+          format: uuid
+        warehouseId:
+          type: integer
+        type:
+          type: string
+          enum: [ENTRY, EXIT]
+        quantity:
+          type: integer
+        reference:
+          type: string
+    TransferRequest:
+      type: object
+      required: [fromWarehouseId, toWarehouseId, productId, quantity]
+      properties:
+        fromWarehouseId:
+          type: integer
+        toWarehouseId:
+          type: integer
+        productId:
+          type: string
+          format: uuid
+        quantity:
+          type: integer

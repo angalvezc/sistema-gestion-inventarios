@@ -1,10 +1,12 @@
-openapi: 3.0.3
+openapi: 3.0.0
 info:
   title: ms-auth-users API
   version: 1.0.0
   description: Servicio de autenticación, emisión de JWT y gestión de usuarios.
+servers:
+  - url: /api/v1
 paths:
-  /api/v1/auth/login:
+  /auth/login:
     post:
       summary: Autenticar usuario y obtener JWT
       requestBody:
@@ -12,22 +14,73 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                email:
-                  type: string
-                  example: admin@logitech.com
-                password:
-                  type: string
-                  example: Admin123!
+              $ref: '#/components/schemas/LoginRequest'
       responses:
         '200':
           description: Autenticación exitosa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
         '401':
           description: Credenciales inválidas
-  /api/v1/users:
+  /users:
     get:
       summary: Listar usuarios del sistema (ADMIN)
+      security:
+        - bearerAuth: []
       responses:
         '200':
-          description: Lista de usuarios
+          description: Lista paginada de usuarios
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+    TokenResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        expiresIn:
+          type: integer
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        fullName:
+          type: string
+        roleId:
+          type: integer
+        active:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        lastLoginAt:
+          type: string
+          format: date-time

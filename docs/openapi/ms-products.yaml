@@ -1,35 +1,97 @@
-openapi: 3.0.3
+openapi: 3.0.0
 info:
   title: ms-products API
   version: 1.0.0
-  description: Catálogo de productos y categorías de LogiTech Solutions.
+  description: Catálogo de productos y categorías.
+servers:
+  - url: /api/v1
 paths:
-  /api/v1/products:
+  /products:
     get:
       summary: Consultar catálogo de productos
+      parameters:
+        - name: categoryId
+          in: query
+          schema:
+            type: integer
+        - name: active
+          in: query
+          schema:
+            type: boolean
       responses:
         '200':
           description: Lista de productos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Product'
     post:
       summary: Crear un nuevo producto (ADMIN)
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                sku:
-                  type: string
-                  example: PROD-1024
-                name:
-                  type: string
-                  example: Mouse Inalámbrico LogiTech
-                basePrice:
-                  type: number
-                  example: 45000.00
+              $ref: '#/components/schemas/ProductCreate'
       responses:
         '201':
           description: Producto creado exitosamente
         '409':
           description: SKU o código de barras duplicado
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Product:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        sku:
+          type: string
+        barcode:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        categoryId:
+          type: integer
+        basePrice:
+          type: number
+          format: float
+        unit:
+          type: string
+          example: "UND"
+        active:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+    ProductCreate:
+      type: object
+      required: [sku, barcode, name, categoryId, basePrice, unit]
+      properties:
+        sku:
+          type: string
+        barcode:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        categoryId:
+          type: integer
+        basePrice:
+          type: number
+          format: float
+        unit:
+          type: string

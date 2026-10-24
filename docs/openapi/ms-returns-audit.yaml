@@ -1,18 +1,104 @@
-openapi: 3.0.3
+openapi: 3.0.0
 info:
   title: ms-returns-audit API
   version: 1.0.0
-  description: Consulta de Kardex inmutable, devoluciones y métricas del dashboard.
+  description: Inalterabilidad del Kardex y gestión de devoluciones.
+servers:
+  - url: /api/v1
 paths:
-  /api/v1/audit/kardex:
+  /audit/kardex:
     get:
-      summary: Consultar historial de movimientos del Kardex
+      summary: Consulta inalterable de movimientos (Kardex)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: productId
+          in: query
+          schema:
+            type: string
+            format: uuid
       responses:
         '200':
-          description: Registros de auditoría inmutables
-  /api/v1/audit/dashboard/metrics:
-    get:
-      summary: Obtener métricas consolidadas del sistema (RF12)
+          description: Historial de movimientos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/KardexEntry'
+  /audit/returns:
+    post:
+      summary: Registrar devolución de cliente o proveedor
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReturnRequestCreate'
       responses:
-        '200':
-          description: Valor de inventario, agotes y movimientos diarios
+        '201':
+          description: Devolución registrada
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    KardexEntry:
+      type: object
+      properties:
+        id:
+          type: integer
+        eventId:
+          type: string
+          format: uuid
+        productId:
+          type: string
+          format: uuid
+        skuSnapshot:
+          type: string
+        warehouseId:
+          type: integer
+        movementType:
+          type: string
+        quantity:
+          type: integer
+        balanceAfter:
+          type: integer
+        reference:
+          type: string
+        userId:
+          type: string
+          format: uuid
+        occurredAt:
+          type: string
+          format: date-time
+        rowHash:
+          type: string
+    ReturnRequestCreate:
+      type: object
+      required: [origin, reason, items]
+      properties:
+        origin:
+          type: string
+          enum: [CLIENT, SUPPLIER]
+        reason:
+          type: string
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              productId:
+                type: string
+                format: uuid
+              quantity:
+                type: integer
+              disposition:
+                type: string
+                enum: [RESTOCK, DAMAGED]
+              warehouseId:
+                type: integer

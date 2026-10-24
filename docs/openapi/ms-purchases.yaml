@@ -1,18 +1,30 @@
-openapi: 3.0.3
+openapi: 3.0.0
 info:
   title: ms-purchases API
   version: 1.0.0
-  description: Gestión de órdenes de compra y recepción de mercancía.
+  description: Gestión de órdenes de reabastecimiento y compras.
+servers:
+  - url: /api/v1
 paths:
-  /api/v1/purchases/orders:
-    get:
-      summary: Listar órdenes de compra
-      responses:
-        '200':
-          description: Lista de órdenes de compra
-  /api/v1/purchases/orders/{id}/receive:
+  /purchases/orders:
     post:
-      summary: Registrar recepción de orden de compra en bodega
+      summary: Crear orden de compra
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PurchaseOrderCreate'
+      responses:
+        '201':
+          description: Orden creada en estado DRAFT
+  /purchases/orders/{id}/receive:
+    post:
+      summary: Marcar orden como recibida e incrementar stock
+      security:
+        - bearerAuth: []
       parameters:
         - name: id
           in: path
@@ -22,4 +34,36 @@ paths:
             format: uuid
       responses:
         '200':
-          description: Orden recepcionada y evento purchase.received emitido
+          description: Orden recibida, evento publicado a RabbitMQ
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    PurchaseOrderCreate:
+      type: object
+      required: [supplierId, destinationWarehouseId, items]
+      properties:
+        supplierId:
+          type: string
+          format: uuid
+        destinationWarehouseId:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PurchaseOrderItem'
+    PurchaseOrderItem:
+      type: object
+      required: [productId, quantity, unitCost]
+      properties:
+        productId:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+        unitCost:
+          type: number
+          format: float
