@@ -1,0 +1,37 @@
+openapi: 3.0.3
+info:
+  title: ms-inventory-stock API
+  version: 1.0.0
+  description: Gestión de saldos de inventario en Bodega A y Bodega B, movimientos y transferencias.
+paths:
+  /api/v1/stock:
+    get:
+      summary: Obtener saldos de inventario por bodega y producto
+      responses:
+        '200':
+          description: Saldos actuales
+  /api/v1/stock/transfers:
+    post:
+      summary: Realizar transferencia entre bodegas
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fromWarehouseId:
+                  type: integer
+                  example: 1
+                toWarehouseId:
+                  type: integer
+                  example: 2
+                productId:
+                  type: string
+                  format: uuid
+                quantity:
+                  type: integer
+                  example: 20
+      responses:
+        '201':
+          description: Transferencia efectuada exitosamente

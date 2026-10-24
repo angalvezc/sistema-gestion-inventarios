@@ -1,0 +1,17 @@
+openapi: 3.0.3
+info:
+  title: ms-suppliers API
+  version: 1.0.0
+  description: Directorio y gestión de proveedores.
+paths:
+  /api/v1/suppliers:
+    get:
+      summary: Obtener directorio de proveedores
+      responses:
+        '200':
+          description: Lista de proveedores
+    post:
+      summary: Crear nuevo proveedor
+      responses:
+        '201':
+          description: Proveedor registrado

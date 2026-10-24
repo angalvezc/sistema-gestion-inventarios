@@ -1,0 +1,35 @@
+openapi: 3.0.3
+info:
+  title: ms-products API
+  version: 1.0.0
+  description: Catálogo de productos y categorías de LogiTech Solutions.
+paths:
+  /api/v1/products:
+    get:
+      summary: Consultar catálogo de productos
+      responses:
+        '200':
+          description: Lista de productos
+    post:
+      summary: Crear un nuevo producto (ADMIN)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                sku:
+                  type: string
+                  example: PROD-1024
+                name:
+                  type: string
+                  example: Mouse Inalámbrico LogiTech
+                basePrice:
+                  type: number
+                  example: 45000.00
+      responses:
+        '201':
+          description: Producto creado exitosamente
+        '409':
+          description: SKU o código de barras duplicado

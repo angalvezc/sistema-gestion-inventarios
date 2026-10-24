@@ -1,0 +1,25 @@
+openapi: 3.0.3
+info:
+  title: ms-purchases API
+  version: 1.0.0
+  description: Gestión de órdenes de compra y recepción de mercancía.
+paths:
+  /api/v1/purchases/orders:
+    get:
+      summary: Listar órdenes de compra
+      responses:
+        '200':
+          description: Lista de órdenes de compra
+  /api/v1/purchases/orders/{id}/receive:
+    post:
+      summary: Registrar recepción de orden de compra en bodega
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Orden recepcionada y evento purchase.received emitido

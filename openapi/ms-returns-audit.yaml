@@ -1,0 +1,18 @@
+openapi: 3.0.3
+info:
+  title: ms-returns-audit API
+  version: 1.0.0
+  description: Consulta de Kardex inmutable, devoluciones y métricas del dashboard.
+paths:
+  /api/v1/audit/kardex:
+    get:
+      summary: Consultar historial de movimientos del Kardex
+      responses:
+        '200':
+          description: Registros de auditoría inmutables
+  /api/v1/audit/dashboard/metrics:
+    get:
+      summary: Obtener métricas consolidadas del sistema (RF12)
+      responses:
+        '200':
+          description: Valor de inventario, agotes y movimientos diarios
