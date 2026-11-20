@@ -1,14 +1,51 @@
 openapi: 3.0.0
 info:
   title: ms-inventory-stock API
-  version: 1.0.0
-  description: Gestión de saldos, movimientos y transferencias entre bodegas.
+  version: 1.1.0
+  description: |
+    Gestión de saldos por bodega, movimientos, transferencias y alertas (RF03-RF06).
+    Bodegas: 1 = BOD-A (Manizales), 2 = BOD-B (Medellín).
+    Roles: los aplica el API Gateway según la tabla de la Entrega 2, §2.1.
 servers:
   - url: /api/v1
+tags:
+  - name: Saldos
+  - name: Movimientos
+  - name: Bodegas
 paths:
   /stock:
     get:
-      summary: Obtener saldos de inventario
+      summary: Obtener saldos de inventario (todos los roles)
+      tags: [Saldos]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: warehouseId
+          in: query
+          schema:
+            type: integer
+        - name: productId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: Saldos actuales, paginados
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StockLevelPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /stock/alerts:
+    get:
+      summary: Productos bajo el umbral mínimo o agotados (todos los roles, RF06)
+      tags: [Saldos]
+      security:
+        - bearerAuth: []
       parameters:
         - name: warehouseId
           in: query
@@ -16,16 +53,60 @@ paths:
             type: integer
       responses:
         '200':
-          description: Saldos actuales
+          description: Saldos con alerta, ordenados del menor al mayor
           content:
             application/json:
               schema:
                 type: array
                 items:
                   $ref: '#/components/schemas/StockLevel'
+  /stock/{productId}:
+    get:
+      summary: Saldo de un producto en ambas bodegas (todos los roles)
+      tags: [Saldos]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ProductId'
+      responses:
+        '200':
+          description: Saldo por bodega (0 si el producto no ha tenido movimientos en una bodega)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductStock'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /stock/{productId}/min-threshold:
+    put:
+      summary: Configurar el umbral mínimo de un producto en una bodega (ADMIN)
+      tags: [Saldos]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ProductId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MinThresholdRequest'
+      responses:
+        '200':
+          description: Umbral actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StockLevel'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /stock/movements:
     post:
-      summary: Registrar entrada o salida manual de stock
+      summary: Registrar entrada o salida manual de stock (ADMIN, WAREHOUSE_OPERATOR)
+      description: La salida nunca deja el saldo negativo (RF04). Publica el evento stock.movement.created.
+      tags: [Movimientos]
       security:
         - bearerAuth: []
       requestBody:
@@ -37,11 +118,21 @@ paths:
       responses:
         '201':
           description: Movimiento registrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Movement'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '409':
-          description: Saldo insuficiente para la salida
+          $ref: '#/components/responses/InsufficientStock'
   /stock/transfers:
     post:
-      summary: Realizar transferencia entre bodegas
+      summary: Realizar transferencia entre bodegas (ADMIN, WAREHOUSE_OPERATOR)
+      description: Resta en origen y suma en destino en una sola transacción (RF05).
+      tags: [Movimientos]
       security:
         - bearerAuth: []
       requestBody:
@@ -53,13 +144,98 @@ paths:
       responses:
         '201':
           description: Transferencia efectuada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transfer'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/InsufficientStock'
+  /warehouses:
+    get:
+      summary: Listar las bodegas (todos los roles)
+      tags: [Bodegas]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Las 2 bodegas de LogiTech
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Warehouse'
 components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
+  parameters:
+    ProductId:
+      name: productId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+    Size:
+      name: size
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+  responses:
+    BadRequest:
+      description: Datos inválidos
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: La bodega no existe
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    InsufficientStock:
+      description: Saldo insuficiente (code INSUFFICIENT_STOCK, details con available y requested)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
   schemas:
+    AlertStatus:
+      type: string
+      nullable: true
+      enum: [LOW, OUT_OF_STOCK, null]
+      description: LOW = bajo el umbral mínimo; OUT_OF_STOCK = agotado; null = sin alerta
+    Warehouse:
+      type: object
+      properties:
+        id:
+          type: integer
+        code:
+          type: string
+          example: BOD-A
+        name:
+          type: string
+        city:
+          type: string
+          example: Manizales
     StockLevel:
       type: object
       properties:
@@ -70,13 +246,61 @@ components:
           format: uuid
         warehouseId:
           type: integer
+        warehouseCode:
+          type: string
         quantity:
           type: integer
         minThreshold:
           type: integer
+        status:
+          $ref: '#/components/schemas/AlertStatus'
         updatedAt:
           type: string
           format: date-time
+    StockLevelPage:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/StockLevel'
+        page:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+    ProductStock:
+      type: object
+      properties:
+        productId:
+          type: string
+          format: uuid
+        totalQuantity:
+          type: integer
+        warehouses:
+          type: array
+          items:
+            type: object
+            properties:
+              warehouseId:
+                type: integer
+              warehouseCode:
+                type: string
+              warehouseName:
+                type: string
+              city:
+                type: string
+              quantity:
+                type: integer
+              minThreshold:
+                type: integer
+              status:
+                $ref: '#/components/schemas/AlertStatus'
+              updatedAt:
+                type: string
+                format: date-time
+                nullable: true
     MovementRequest:
       type: object
       required: [productId, warehouseId, type, quantity, reference]
@@ -91,8 +315,43 @@ components:
           enum: [ENTRY, EXIT]
         quantity:
           type: integer
+          minimum: 1
+          maximum: 1000000
         reference:
           type: string
+          maxLength: 100
+          example: FACTURA-2026-0042
+    Movement:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        productId:
+          type: string
+          format: uuid
+        warehouseId:
+          type: integer
+        type:
+          type: string
+          enum: [ENTRY, EXIT, TRANSFER_IN, TRANSFER_OUT, RETURN_IN]
+        quantity:
+          type: integer
+        balanceAfter:
+          type: integer
+        transferId:
+          type: string
+          format: uuid
+          nullable: true
+        reference:
+          type: string
+        userId:
+          type: string
+          format: uuid
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
     TransferRequest:
       type: object
       required: [fromWarehouseId, toWarehouseId, productId, quantity]
@@ -106,3 +365,65 @@ components:
           format: uuid
         quantity:
           type: integer
+          minimum: 1
+          maximum: 1000000
+        reference:
+          type: string
+          maxLength: 100
+    Transfer:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        productId:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+        status:
+          type: string
+          example: COMPLETED
+        reference:
+          type: string
+        from:
+          type: object
+          properties:
+            warehouseId:
+              type: integer
+            balanceAfter:
+              type: integer
+        to:
+          type: object
+          properties:
+            warehouseId:
+              type: integer
+            balanceAfter:
+              type: integer
+        createdAt:
+          type: string
+          format: date-time
+    MinThresholdRequest:
+      type: object
+      required: [warehouseId, minThreshold]
+      properties:
+        warehouseId:
+          type: integer
+        minThreshold:
+          type: integer
+          minimum: 0
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+          example: INSUFFICIENT_STOCK
+        message:
+          type: string
+        details:
+          nullable: true
+        timestamp:
+          type: string
+          format: date-time
+        path:
+          type: string
