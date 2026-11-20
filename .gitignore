@@ -1,0 +1,9 @@
+# Dependencias de Node.js (se instalan con npm, no se versionan)
+node_modules/
+
+# Variables de entorno reales: contienen contraseñas y secretos
+.env
+
+# Resultados temporales y logs
+*.log
+npm-debug.log*

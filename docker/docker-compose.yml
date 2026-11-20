@@ -1,0 +1,99 @@
+# Entorno local completo (RNF14).
+# Uso (desde la raíz del repositorio):
+#   cp docker/.env.example docker/.env
+#   docker compose -f docker/docker-compose.yml up -d
+#
+# Ningún puerto de base de datos ni de microservicio se publica al host:
+# solo el API Gateway (se agrega en el Paso 3) y la consola de RabbitMQ.
+
+name: logitech
+
+# Configuración común de las 6 bases de datos (Database-per-Service, RNF02)
+x-postgres: &postgres
+  image: postgres:16-alpine
+  restart: unless-stopped
+  networks: [backend]
+  healthcheck:
+    test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+    interval: 5s
+    timeout: 3s
+    retries: 10
+
+services:
+  # ---------------- Persistencia ----------------
+  db-auth:
+    <<: *postgres
+    environment:
+      POSTGRES_DB: db_auth
+      POSTGRES_USER: ${DB_AUTH_USER}
+      POSTGRES_PASSWORD: ${DB_AUTH_PASSWORD}
+    volumes: [db-auth-data:/var/lib/postgresql/data]
+
+  db-products:
+    <<: *postgres
+    environment:
+      POSTGRES_DB: db_products
+      POSTGRES_USER: ${DB_PRODUCTS_USER}
+      POSTGRES_PASSWORD: ${DB_PRODUCTS_PASSWORD}
+    volumes: [db-products-data:/var/lib/postgresql/data]
+
+  db-stock:
+    <<: *postgres
+    environment:
+      POSTGRES_DB: db_stock
+      POSTGRES_USER: ${DB_STOCK_USER}
+      POSTGRES_PASSWORD: ${DB_STOCK_PASSWORD}
+    volumes: [db-stock-data:/var/lib/postgresql/data]
+
+  db-suppliers:
+    <<: *postgres
+    environment:
+      POSTGRES_DB: db_suppliers
+      POSTGRES_USER: ${DB_SUPPLIERS_USER}
+      POSTGRES_PASSWORD: ${DB_SUPPLIERS_PASSWORD}
+    volumes: [db-suppliers-data:/var/lib/postgresql/data]
+
+  db-purchases:
+    <<: *postgres
+    environment:
+      POSTGRES_DB: db_purchases
+      POSTGRES_USER: ${DB_PURCHASES_USER}
+      POSTGRES_PASSWORD: ${DB_PURCHASES_PASSWORD}
+    volumes: [db-purchases-data:/var/lib/postgresql/data]
+
+  db-audit:
+    <<: *postgres
+    environment:
+      POSTGRES_DB: db_audit
+      POSTGRES_USER: ${DB_AUDIT_USER}
+      POSTGRES_PASSWORD: ${DB_AUDIT_PASSWORD}
+    volumes: [db-audit-data:/var/lib/postgresql/data]
+
+  # ---------------- Message Broker (RNF08) ----------------
+  rabbitmq:
+    image: rabbitmq:3-management
+    restart: unless-stopped
+    networks: [backend]
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    ports:
+      - "15672:15672"   # consola web de administración (solo para desarrollo)
+    volumes: [rabbitmq-data:/var/lib/rabbitmq]
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  db-auth-data:
+  db-products-data:
+  db-stock-data:
+  db-suppliers-data:
+  db-purchases-data:
+  db-audit-data:
+  rabbitmq-data:
+
+networks:
+  backend:
