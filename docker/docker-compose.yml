@@ -109,6 +109,31 @@ services:
       db-auth:
         condition: service_healthy
 
+  # ---------------- API Gateway (RNF05): único punto de entrada ----------------
+  api-gateway:
+    build:
+      context: ..
+      dockerfile: api-gateway/Dockerfile
+    image: logitech/api-gateway:1.0.0
+    restart: unless-stopped
+    networks: [backend]
+    ports:
+      - "8080:8080"   # el ÚNICO puerto de la aplicación publicado al host
+    environment:
+      PORT: 8080
+      JWT_SECRET: ${JWT_SECRET}
+      AUTH_URL: http://ms-auth-users:8081
+      PRODUCTS_URL: http://ms-products:8082
+      STOCK_URL: http://ms-inventory-stock:8083
+      SUPPLIERS_URL: http://ms-suppliers:8084
+      PURCHASES_URL: http://ms-purchases:8085
+      AUDIT_URL: http://ms-returns-audit:8086
+      RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-600}
+      RATE_LIMIT_WINDOW_MS: 60000
+    depends_on:
+      ms-auth-users:
+        condition: service_healthy
+
 volumes:
   db-auth-data:
   db-products-data:
