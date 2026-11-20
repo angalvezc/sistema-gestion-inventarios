@@ -100,6 +100,17 @@ class PgStockTransaction {
     return { id: rows[0].id, status: rows[0].status, createdAt: rows[0].created_at };
   }
 
+  // Devuelve true si es la primera vez que se ve este evento; false si ya se procesó.
+  async markEventProcessed(eventId, eventType) {
+    const { rows } = await this.client.query(
+      `INSERT INTO processed_event (event_id, event_type) VALUES ($1, $2)
+       ON CONFLICT (event_id) DO NOTHING
+       RETURNING event_id`,
+      [eventId, eventType],
+    );
+    return rows.length > 0;
+  }
+
   async addOutboxEvent(eventType, payload) {
     await this.client.query(
       'INSERT INTO outbox_event (event_type, payload) VALUES ($1, $2::jsonb)',

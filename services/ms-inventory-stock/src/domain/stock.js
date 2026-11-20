@@ -6,6 +6,9 @@ const { ValidationError } = require('./errors');
 const MANUAL_MOVEMENT_TYPES = ['ENTRY', 'EXIT'];
 const DECREASING_TYPES = ['EXIT', 'TRANSFER_OUT'];
 
+// RF11: RESTOCK vuelve al inventario; DAMAGED es baja por avería (no suma stock).
+const RETURN_DISPOSITIONS = ['RESTOCK', 'DAMAGED'];
+
 const MAX_QUANTITY = 1_000_000; // tope por operación, evita desbordar el INT de PostgreSQL
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -58,6 +61,40 @@ function assertValidThreshold(b = {}) {
   throwIfAny(details, 'Datos del umbral inválidos');
 }
 
+// ---------- Eventos que llegan de otros servicios (RabbitMQ) ----------
+
+function assertValidItems(items, details, { withWarehouse = false, withDisposition = false } = {}) {
+  if (!Array.isArray(items) || items.length === 0) {
+    details.push('items: debe ser una lista con al menos un ítem');
+    return;
+  }
+  items.forEach((item, i) => {
+    if (!item || !isUuid(item.productId)) details.push(`items[${i}].productId: debe ser un UUID válido`);
+    if (!item || !isQuantity(item.quantity)) details.push(`items[${i}].${QUANTITY_RULE}`);
+    if (withWarehouse && (!item || !isId(item.warehouseId))) details.push(`items[${i}].warehouseId: debe ser un entero positivo`);
+    if (withDisposition && (!item || !RETURN_DISPOSITIONS.includes(item.disposition))) {
+      details.push(`items[${i}].disposition: debe ser uno de ${RETURN_DISPOSITIONS.join(', ')}`);
+    }
+  });
+}
+
+// purchase.received (RF10): { orderId, orderNumber, warehouseId, items: [{ productId, sku, quantity }] }
+function assertValidPurchaseReceived(p = {}) {
+  const details = [];
+  if (!p.orderNumber && !p.orderId) details.push('orderNumber u orderId: obligatorio');
+  if (!isId(p.warehouseId)) details.push('warehouseId: debe ser un entero positivo');
+  assertValidItems(p.items, details);
+  throwIfAny(details, 'Evento purchase.received inválido');
+}
+
+// return.processed (RF11): { returnId, returnNumber, items: [{ productId, warehouseId, quantity, disposition }] }
+function assertValidReturnProcessed(p = {}) {
+  const details = [];
+  if (!p.returnNumber && !p.returnId) details.push('returnNumber o returnId: obligatorio');
+  assertValidItems(p.items, details, { withWarehouse: true, withDisposition: true });
+  throwIfAny(details, 'Evento return.processed inválido');
+}
+
 // RF06: estado de alerta de un saldo.
 //   OUT_OF_STOCK -> agotado (0 unidades)
 //   LOW          -> por debajo del umbral mínimo configurado
@@ -70,9 +107,12 @@ function alertStatus(quantity, minThreshold) {
 
 module.exports = {
   DECREASING_TYPES,
+  isUuid,
   assertUuid,
   assertValidMovement,
   assertValidTransfer,
   assertValidThreshold,
+  assertValidPurchaseReceived,
+  assertValidReturnProcessed,
   alertStatus,
 };

@@ -4,16 +4,25 @@
 const { NotFoundError, InsufficientStockError, ValidationError } = require('../domain/errors');
 const {
   DECREASING_TYPES,
+  isUuid,
   assertUuid,
   assertValidMovement,
   assertValidTransfer,
   assertValidThreshold,
+  assertValidPurchaseReceived,
+  assertValidReturnProcessed,
   alertStatus,
 } = require('../domain/stock');
 const { EVENTS, movementCreatedPayload, stockLowPayload } = require('../domain/events');
 const { parsePagination } = require('./pagination');
 
 const withStatus = (level) => ({ ...level, status: alertStatus(level.quantity, level.minThreshold) });
+
+// Usuario que originó un evento de otro servicio (opcional en el payload).
+const eventUser = (payload) => ({
+  id: isUuid(payload.userId) ? payload.userId : null,
+  email: payload.userEmail || null,
+});
 
 class StockService {
   constructor({ stockRepository }) {
@@ -134,6 +143,44 @@ class StockService {
     await this.#assertWarehouseExists(body.warehouseId);
     const level = await this.repo.upsertMinThreshold(productId, body.warehouseId, body.minThreshold);
     return withStatus(level);
+  }
+
+  // ---------------- Eventos entrantes (RabbitMQ) ----------------
+
+  // RF10: al recibir una orden de compra, cada ítem entra a la bodega destino.
+  async applyPurchaseReceived(event) {
+    const p = event.payload;
+    assertValidPurchaseReceived(p);
+    await this.#assertWarehouseExists(p.warehouseId);
+    const reference = String(p.orderNumber || `OC ${p.orderId}`).slice(0, 100);
+    const entries = p.items.map((i) => ({ productId: i.productId, warehouseId: p.warehouseId, quantity: i.quantity }));
+    return this.#applyIncomingEvent(event, entries, 'ENTRY', reference, eventUser(p));
+  }
+
+  // RF11: solo los ítems RESTOCK vuelven al inventario; DAMAGED es baja por avería.
+  async applyReturnProcessed(event) {
+    const p = event.payload;
+    assertValidReturnProcessed(p);
+    const restock = p.items.filter((i) => i.disposition === 'RESTOCK');
+    await Promise.all([...new Set(restock.map((i) => i.warehouseId))].map((id) => this.#assertWarehouseExists(id)));
+    const reference = String(`DEV ${p.returnNumber || p.returnId}`).slice(0, 100);
+    const entries = restock.map((i) => ({ productId: i.productId, warehouseId: i.warehouseId, quantity: i.quantity }));
+    return this.#applyIncomingEvent(event, entries, 'RETURN_IN', reference, eventUser(p));
+  }
+
+  // Todo el evento se aplica en una transacción: todos los ítems o ninguno.
+  // markEventProcessed hace que un evento repetido no sume dos veces (idempotencia).
+  async #applyIncomingEvent(event, entries, type, reference, user) {
+    return this.repo.withTransaction(async (tx) => {
+      if (!(await tx.markEventProcessed(event.eventId, event.eventType))) {
+        return { duplicate: true, movements: 0 };
+      }
+      for (const entry of entries) {
+        const level = await tx.increase(entry.productId, entry.warehouseId, entry.quantity);
+        await this.#recordMovement(tx, { ...entry, type, reference, level, user });
+      }
+      return { duplicate: false, movements: entries.length };
+    });
   }
 
   // ---------------- Internos ----------------
