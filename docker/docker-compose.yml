@@ -86,6 +86,29 @@ services:
       timeout: 5s
       retries: 10
 
+  # ---------------- Microservicios ----------------
+  # Sin "ports": solo son alcanzables dentro de la red backend (vía API Gateway).
+  ms-auth-users:
+    build:
+      context: ..                                # raíz del repositorio
+      dockerfile: services/ms-auth-users/Dockerfile
+    image: logitech/ms-auth-users:1.0.0
+    restart: unless-stopped
+    networks: [backend]
+    environment:
+      PORT: 8081
+      DB_HOST: db-auth
+      DB_PORT: 5432
+      DB_NAME: db_auth
+      DB_USER: ${DB_AUTH_USER}
+      DB_PASSWORD: ${DB_AUTH_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+    depends_on:
+      db-auth:
+        condition: service_healthy
+
 volumes:
   db-auth-data:
   db-products-data:

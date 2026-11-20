@@ -1,0 +1,5 @@
+# Lo que NO se envía a Docker al construir (el contexto es la raíz del repo).
+**/node_modules
+.git
+docker/.env
+**/*.log
