@@ -123,6 +123,9 @@ services:
       DB_NAME: db_stock
       DB_USER: ${DB_STOCK_USER}
       DB_PASSWORD: ${DB_STOCK_PASSWORD}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672
+    # Solo espera a su base de datos. NO depende de RabbitMQ a propósito (RNF09):
+    # si el broker cae, el stock sigue operando y reconecta solo.
     depends_on:
       db-stock:
         condition: service_healthy
