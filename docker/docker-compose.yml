@@ -110,6 +110,7 @@ services:
         condition: service_healthy
 
   # ---------------- API Gateway (RNF05): único punto de entrada ----------------
+  # Laravel 12 sobre php:8.3-apache.
   api-gateway:
     build:
       context: ..
@@ -120,7 +121,7 @@ services:
     ports:
       - "8080:8080"   # el ÚNICO puerto de la aplicación publicado al host
     environment:
-      PORT: 8080
+      APP_KEY: ${GATEWAY_APP_KEY}
       JWT_SECRET: ${JWT_SECRET}
       AUTH_URL: http://ms-auth-users:8081
       PRODUCTS_URL: http://ms-products:8082
@@ -128,8 +129,8 @@ services:
       SUPPLIERS_URL: http://ms-suppliers:8084
       PURCHASES_URL: http://ms-purchases:8085
       AUDIT_URL: http://ms-returns-audit:8086
+      UPSTREAM_TIMEOUT: 10
       RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-600}
-      RATE_LIMIT_WINDOW_MS: 60000
     depends_on:
       ms-auth-users:
         condition: service_healthy
