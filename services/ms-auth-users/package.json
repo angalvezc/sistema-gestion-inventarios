@@ -1,0 +1,21 @@
+{
+  "name": "ms-auth-users",
+  "version": "1.0.0",
+  "description": "Microservicio de autenticación, emisión de JWT y gestión de usuarios (RF01, RNF07)",
+  "main": "src/index.js",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "bcryptjs": "2.4.3",
+    "express": "4.21.2",
+    "jsonwebtoken": "9.0.2",
+    "pg": "8.13.1",
+    "swagger-ui-express": "5.0.1",
+    "yaml": "2.6.1"
+  }
+}
