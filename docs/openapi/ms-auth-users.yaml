@@ -1,14 +1,15 @@
 openapi: 3.0.0
 info:
   title: ms-auth-users API
-  version: 1.0.0
-  description: Servicio de autenticación, emisión de JWT y gestión de usuarios.
+  version: 1.1.0
+  description: Servicio de autenticación, emisión de JWT y gestión de usuarios (RF01, RNF07).
 servers:
   - url: /api/v1
 paths:
   /auth/login:
     post:
-      summary: Autenticar usuario y obtener JWT
+      summary: Autenticar usuario y obtener JWT (público)
+      tags: [Autenticación]
       requestBody:
         required: true
         content:
@@ -22,64 +23,191 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TokenResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
-          description: Credenciales inválidas
+          $ref: '#/components/responses/Unauthorized'
+  /auth/refresh:
+    post:
+      summary: Renovar el access token con el refresh token (autenticado)
+      description: El refresh token usado queda revocado y se entrega uno nuevo (rotación).
+      tags: [Autenticación]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '200':
+          description: Tokens renovados
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /auth/validate:
+    get:
+      summary: Validar un access token y devolver sus claims (interno, API Gateway)
+      tags: [Autenticación]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Token válido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenClaims'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /users:
     get:
       summary: Listar usuarios del sistema (ADMIN)
+      tags: [Usuarios]
       security:
         - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
       responses:
         '200':
           description: Lista paginada de usuarios
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/User'
-  /users/{id}:
-    put:
-      summary: Actualizar datos de un usuario (ADMIN)
+                $ref: '#/components/schemas/UserPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      summary: Crear usuario (ADMIN)
+      tags: [Usuarios]
       security:
         - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/User'
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '201':
+          description: Usuario creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Ya existe un usuario con ese email
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /users/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    put:
+      summary: Actualizar datos de un usuario (ADMIN)
+      description: Actualización parcial. El email no se puede modificar.
+      tags: [Usuarios]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
       responses:
         '200':
           description: Usuario actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
     delete:
       summary: Desactivar usuario - Baja lógica (ADMIN)
+      tags: [Usuarios]
       security:
         - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
       responses:
         '204':
           description: Usuario desactivado correctamente
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
 components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
+  parameters:
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+    Size:
+      name: size
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+  responses:
+    BadRequest:
+      description: Datos inválidos
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: No autenticado, credenciales o token inválidos
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: El rol del usuario no tiene permiso (lo responde el API Gateway)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Usuario no encontrado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
   schemas:
+    Role:
+      type: string
+      enum: [ADMIN, WAREHOUSE_OPERATOR, AUDITOR]
     LoginRequest:
       type: object
       required: [email, password]
@@ -89,14 +217,37 @@ components:
           format: email
         password:
           type: string
+    RefreshRequest:
+      type: object
+      required: [refreshToken]
+      properties:
+        refreshToken:
+          type: string
     TokenResponse:
       type: object
       properties:
         accessToken:
           type: string
+          description: JWT HS256 con los claims sub, email y role
         refreshToken:
           type: string
         expiresIn:
+          type: integer
+          description: Segundos de vigencia del access token
+        user:
+          $ref: '#/components/schemas/User'
+    TokenClaims:
+      type: object
+      properties:
+        sub:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        role:
+          $ref: '#/components/schemas/Role'
+        exp:
           type: integer
     User:
       type: object
@@ -111,6 +262,8 @@ components:
           type: string
         roleId:
           type: integer
+        role:
+          $ref: '#/components/schemas/Role'
         active:
           type: boolean
         createdAt:
@@ -119,4 +272,59 @@ components:
         lastLoginAt:
           type: string
           format: date-time
-          
+          nullable: true
+    UserPage:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+        page:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+    CreateUserRequest:
+      type: object
+      required: [email, password, fullName, role]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+        fullName:
+          type: string
+        role:
+          $ref: '#/components/schemas/Role'
+    UpdateUserRequest:
+      type: object
+      minProperties: 1
+      properties:
+        fullName:
+          type: string
+        role:
+          $ref: '#/components/schemas/Role'
+        active:
+          type: boolean
+        password:
+          type: string
+          minLength: 8
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+          example: VALIDATION_ERROR
+        message:
+          type: string
+        details:
+          nullable: true
+        timestamp:
+          type: string
+          format: date-time
+        path:
+          type: string
