@@ -1,28 +1,41 @@
-# Imagen del API Gateway (basada en docker/Dockerfile.microservice).
-# El gateway no tiene base de datos ni contrato OpenAPI propio, por eso no copia
-# migrations/ ni openapi.yaml. Se construye desde la RAÍZ del repositorio:
+# Imagen del API Gateway (Laravel 12 sobre la imagen oficial php:8.3-apache).
+# Se construye desde la RAÍZ del repositorio, igual que los microservicios:
 #   docker build -f api-gateway/Dockerfile -t logitech/api-gateway:1.0.0 .
 
-# ---------- Etapa 1: dependencias de producción ----------
-FROM node:20-alpine AS deps
+# ---------- Etapa 1: dependencias PHP con Composer ----------
+FROM composer:2 AS vendor
 WORKDIR /app
-COPY api-gateway/package.json api-gateway/package-lock.json ./
-RUN npm ci --omit=dev
+COPY api-gateway/composer.json api-gateway/composer.lock ./
+RUN composer install --no-dev --no-interaction --prefer-dist --no-scripts --no-autoloader
+COPY api-gateway/ ./
+RUN composer dump-autoload --no-dev --optimize
 
-# ---------- Etapa 2: imagen final ----------
-FROM node:20-alpine
-ENV NODE_ENV=production \
-    PORT=8080
-WORKDIR /app
+# ---------- Etapa 2: imagen final con Apache + PHP ----------
+FROM php:8.3-apache
 
-COPY --from=deps /app/node_modules ./node_modules
-COPY api-gateway/package.json ./
-COPY api-gateway/src ./src
+# OPcache (rendimiento) y mod_rewrite (lo usa el .htaccess de Laravel).
+RUN docker-php-ext-install opcache && a2enmod rewrite
 
-USER node
+# Apache escucha en 8080: un usuario sin privilegios no puede usar el puerto 80.
+COPY api-gateway/docker/apache.conf /etc/apache2/sites-available/000-default.conf
+COPY api-gateway/docker/php.ini /usr/local/etc/php/conf.d/gateway.ini
+RUN echo "Listen 8080" > /etc/apache2/ports.conf
+
+# Valores no secretos por defecto (los secretos llegan por variables de entorno).
+ENV APP_ENV=production \
+    APP_DEBUG=false \
+    LOG_CHANNEL=stderr \
+    SESSION_DRIVER=array \
+    CACHE_STORE=file \
+    QUEUE_CONNECTION=sync
+
+WORKDIR /var/www/html
+COPY --from=vendor --chown=www-data:www-data /app /var/www/html
+
+# Seguridad: Apache corre con el usuario www-data, sin privilegios de root.
+USER www-data
+
 EXPOSE 8080
 
 HEALTHCHECK --interval=15s --timeout=3s --retries=3 \
-  CMD wget -qO- "http://localhost:${PORT}/health/live" || exit 1
-
-CMD ["node", "src/index.js"]
+  CMD curl -fsS http://localhost:8080/health/live || exit 1
