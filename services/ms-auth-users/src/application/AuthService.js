@@ -24,6 +24,7 @@ class AuthService {
       throw new UnauthorizedError('Credenciales inválidas');
     }
     await this.users.updateLastLogin(user.id);
+    user.lastLoginAt = new Date(); // refleja en la respuesta el login que se acaba de registrar
     return this.#issueTokens(user);
   }
 
