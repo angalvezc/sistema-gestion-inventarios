@@ -109,6 +109,24 @@ services:
       db-auth:
         condition: service_healthy
 
+  ms-inventory-stock:
+    build:
+      context: ..
+      dockerfile: services/ms-inventory-stock/Dockerfile
+    image: logitech/ms-inventory-stock:1.0.0
+    restart: unless-stopped
+    networks: [backend]
+    environment:
+      PORT: 8083
+      DB_HOST: db-stock
+      DB_PORT: 5432
+      DB_NAME: db_stock
+      DB_USER: ${DB_STOCK_USER}
+      DB_PASSWORD: ${DB_STOCK_PASSWORD}
+    depends_on:
+      db-stock:
+        condition: service_healthy
+
   # ---------------- API Gateway (RNF05): único punto de entrada ----------------
   # Laravel 12 sobre php:8.3-apache.
   api-gateway:
