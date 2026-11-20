@@ -8,6 +8,7 @@ use Closure;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
@@ -20,6 +21,8 @@ use Throwable;
  */
 class AuthorizeGatewayRoute
 {
+    private const MIN_SECRET_LENGTH = 32;
+
     public function __construct(private RouteTable $routes)
     {
     }
@@ -47,11 +50,22 @@ class AuthorizeGatewayRoute
             return ApiError::make($request, 401, 'UNAUTHORIZED', 'Falta el token (Authorization: Bearer <JWT>)');
         }
 
+        // Error de configuración (no del usuario): la librería exige mínimo 32 caracteres para HS256.
+        $secret = (string) config('gateway.jwt_secret');
+        if (strlen($secret) < self::MIN_SECRET_LENGTH) {
+            Log::error('JWT_SECRET no está definido o tiene menos de '.self::MIN_SECRET_LENGTH.' caracteres');
+
+            return ApiError::make($request, 500, 'GATEWAY_MISCONFIGURED', 'El gateway no tiene un JWT_SECRET válido (mínimo 32 caracteres)');
+        }
+
         try {
             // Mismo secreto y algoritmo que usa ms-auth-users al firmar.
             // Rechaza firmas distintas, tokens vencidos y otros algoritmos.
-            $claims = JWT::decode($token, new Key(config('gateway.jwt_secret'), 'HS256'));
-        } catch (Throwable) {
+            $claims = JWT::decode($token, new Key($secret, 'HS256'));
+        } catch (Throwable $e) {
+            // Al cliente no se le da el detalle; queda en el log para diagnóstico.
+            Log::warning('Token rechazado: '.$e->getMessage());
+
             return ApiError::make($request, 401, 'UNAUTHORIZED', 'Token inválido o expirado');
         }
 
