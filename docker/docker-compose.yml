@@ -145,6 +145,30 @@ services:
       db-suppliers:
         condition: service_healthy
 
+  ms-purchases:
+    build:
+      context: ..
+      dockerfile: services/ms-purchases/Dockerfile
+    image: logitech/ms-purchases:1.0.0
+    restart: unless-stopped
+    networks: [backend]
+    environment:
+      PORT: 8085
+      DB_HOST: db-purchases
+      DB_PORT: 5432
+      DB_NAME: db_purchases
+      DB_USER: ${DB_PURCHASES_USER}
+      DB_PASSWORD: ${DB_PURCHASES_PASSWORD}
+      PRODUCTS_URL: http://ms-products:8082     # validación REST al crear órdenes
+      SUPPLIERS_URL: http://ms-suppliers:8084
+      WAREHOUSE_IDS: "1,2"                      # BOD-A (Manizales) y BOD-B (Medellín)
+      RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672
+    # Solo espera a su base de datos. NO depende de products, suppliers ni RabbitMQ
+    # para arrancar (RNF09): si caen, solo falla crear órdenes nuevas.
+    depends_on:
+      db-purchases:
+        condition: service_healthy
+
   ms-inventory-stock:
     build:
       context: ..
