@@ -127,6 +127,24 @@ services:
       db-products:
         condition: service_healthy
 
+  ms-suppliers:
+    build:
+      context: ..
+      dockerfile: services/ms-suppliers/Dockerfile
+    image: logitech/ms-suppliers:1.0.0
+    restart: unless-stopped
+    networks: [backend]
+    environment:
+      PORT: 8084
+      DB_HOST: db-suppliers
+      DB_PORT: 5432
+      DB_NAME: db_suppliers
+      DB_USER: ${DB_SUPPLIERS_USER}
+      DB_PASSWORD: ${DB_SUPPLIERS_PASSWORD}
+    depends_on:
+      db-suppliers:
+        condition: service_healthy
+
   ms-inventory-stock:
     build:
       context: ..
