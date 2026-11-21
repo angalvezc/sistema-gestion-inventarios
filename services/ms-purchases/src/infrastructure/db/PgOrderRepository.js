@@ -52,14 +52,17 @@ class PgOrderTransaction {
     return rows.map(toItem);
   }
 
+  // Cada parámetro se usa una sola vez y con un solo tipo: si se reutiliza el mismo
+  // parámetro como VARCHAR y como TEXT, PostgreSQL rechaza la consulta
+  // ("inconsistent types deduced for parameter").
   async updateStatus(id, status, userId) {
     await this.client.query(
       `UPDATE purchase_order
           SET status      = $2,
-              approved_by = CASE WHEN $2 = 'APPROVED' THEN $3::uuid ELSE approved_by END,
-              received_at = CASE WHEN $2 = 'RECEIVED' THEN now() ELSE received_at END
+              approved_by = COALESCE($3, approved_by),
+              received_at = CASE WHEN $4 THEN now() ELSE received_at END
         WHERE id = $1`,
-      [id, status, userId],
+      [id, status, status === 'APPROVED' ? userId : null, status === 'RECEIVED'],
     );
   }
 
