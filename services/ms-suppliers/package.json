@@ -1,0 +1,19 @@
+{
+  "name": "ms-suppliers",
+  "version": "1.0.0",
+  "description": "Microservicio de proveedores: directorio, contactos y condiciones comerciales (RF08)",
+  "main": "src/index.js",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "express": "4.21.2",
+    "pg": "8.13.1",
+    "swagger-ui-express": "5.0.1",
+    "yaml": "2.6.1"
+  }
+}
