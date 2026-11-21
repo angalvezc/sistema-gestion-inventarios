@@ -109,6 +109,24 @@ services:
       db-auth:
         condition: service_healthy
 
+  ms-products:
+    build:
+      context: ..
+      dockerfile: services/ms-products/Dockerfile
+    image: logitech/ms-products:1.0.0
+    restart: unless-stopped
+    networks: [backend]
+    environment:
+      PORT: 8082
+      DB_HOST: db-products
+      DB_PORT: 5432
+      DB_NAME: db_products
+      DB_USER: ${DB_PRODUCTS_USER}
+      DB_PASSWORD: ${DB_PRODUCTS_PASSWORD}
+    depends_on:
+      db-products:
+        condition: service_healthy
+
   ms-inventory-stock:
     build:
       context: ..
