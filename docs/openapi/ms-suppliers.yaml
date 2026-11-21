@@ -1,25 +1,46 @@
 openapi: 3.0.0
 info:
   title: ms-suppliers API
-  version: 1.0.0
-  description: Directorio de proveedores de LogiTech.
+  version: 1.1.0
+  description: |
+    Directorio de proveedores de LogiTech, sus contactos y condiciones comerciales (RF08).
+    Roles: los aplica el API Gateway según la tabla de la Entrega 2, §2.1
+    (consultas: todos los roles; creación, edición y baja: ADMIN).
 servers:
   - url: /api/v1
+tags:
+  - name: Proveedores
 paths:
   /suppliers:
     get:
-      summary: Listar proveedores
+      summary: Listar proveedores (todos los roles)
+      tags: [Proveedores]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: q
+          in: query
+          description: Texto a buscar en la razón social o el NIT
+          schema:
+            type: string
+        - name: active
+          in: query
+          description: true (por defecto) = solo activos; false = solo dados de baja; all = todos
+          schema:
+            type: string
+            enum: ['true', 'false', all]
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
       responses:
         '200':
-          description: Directorio de proveedores
+          description: Directorio paginado (sin contactos)
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Supplier'
+                $ref: '#/components/schemas/SupplierPage'
     post:
       summary: Crear un nuevo proveedor (ADMIN)
+      tags: [Proveedores]
       security:
         - bearerAuth: []
       requestBody:
@@ -31,16 +52,28 @@ paths:
       responses:
         '201':
           description: Proveedor creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Supplier'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
   /suppliers/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
     get:
-      summary: Consultar detalle de proveedor
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
+      summary: Consultar detalle de proveedor con sus contactos (todos los roles)
+      description: También devuelve proveedores dados de baja (active = false).
+      tags: [Proveedores]
+      security:
+        - bearerAuth: []
       responses:
         '200':
           description: Detalle del proveedor
@@ -48,17 +81,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Supplier'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
     put:
       summary: Actualizar datos del proveedor (ADMIN)
+      description: Reemplazo completo; los contactos enviados reemplazan a los anteriores.
+      tags: [Proveedores]
       security:
         - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
       requestBody:
         required: true
         content:
@@ -68,27 +100,87 @@ paths:
       responses:
         '200':
           description: Proveedor actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Supplier'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
     delete:
-      summary: Dar de baja a un proveedor (ADMIN)
+      summary: Dar de baja a un proveedor - baja lógica (ADMIN)
+      tags: [Proveedores]
       security:
         - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
       responses:
         '204':
           description: Proveedor desactivado
+        '404':
+          $ref: '#/components/responses/NotFound'
 components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
+  parameters:
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+    Size:
+      name: size
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+  responses:
+    BadRequest:
+      description: Datos inválidos (incluye NIT con dígito de verificación incorrecto)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Proveedor no encontrado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Conflict:
+      description: Ya existe un proveedor con ese NIT
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
   schemas:
+    Contact:
+      type: object
+      required: [name]
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        role:
+          type: string
+          maxLength: 60
+          example: Asesor comercial
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
     Supplier:
       type: object
       properties:
@@ -97,35 +189,91 @@ components:
           format: uuid
         nit:
           type: string
+          example: 800197268-4
         businessName:
           type: string
         email:
           type: string
         phone:
           type: string
+          nullable: true
         address:
           type: string
+          nullable: true
         paymentTerms:
           type: string
+          example: Crédito 30 días
         leadTimeDays:
           type: integer
         active:
           type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        contacts:
+          type: array
+          description: Solo en el detalle y en las respuestas de creación/edición
+          items:
+            $ref: '#/components/schemas/Contact'
+    SupplierPage:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/Supplier'
+        page:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
     SupplierCreate:
       type: object
       required: [nit, businessName, email, paymentTerms, leadTimeDays]
       properties:
         nit:
           type: string
+          description: NIT con dígito de verificación (formato 900123456-7); el dígito se valida con el algoritmo de la DIAN
+          example: 800197268-4
         businessName:
           type: string
+          maxLength: 150
         email:
           type: string
+          format: email
         phone:
           type: string
         address:
           type: string
+          maxLength: 200
         paymentTerms:
           type: string
+          maxLength: 60
         leadTimeDays:
           type: integer
+          minimum: 0
+          maximum: 365
+        active:
+          type: boolean
+          description: Solo en PUT, para reactivar un proveedor dado de baja
+        contacts:
+          type: array
+          maxItems: 10
+          items:
+            $ref: '#/components/schemas/Contact'
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+          example: CONFLICT
+        message:
+          type: string
+        details:
+          nullable: true
+        timestamp:
+          type: string
+          format: date-time
+        path:
+          type: string
