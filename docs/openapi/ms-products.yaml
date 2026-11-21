@@ -1,34 +1,58 @@
 openapi: 3.0.0
 info:
   title: ms-products API
-  version: 1.0.0
-  description: Catálogo de productos y categorías.
+  version: 1.1.0
+  description: |
+    Catálogo de productos, categorías y especificaciones técnicas (RF02).
+    Roles: los aplica el API Gateway según la tabla de la Entrega 2, §2.1
+    (consultas: todos los roles; creación, edición y baja: ADMIN).
 servers:
   - url: /api/v1
+tags:
+  - name: Productos
+  - name: Categorías
 paths:
   /products:
     get:
-      summary: Consultar catálogo de productos
+      summary: Consultar catálogo de productos (todos los roles)
+      tags: [Productos]
+      security:
+        - bearerAuth: []
       parameters:
+        - name: sku
+          in: query
+          description: SKU exacto (no distingue mayúsculas)
+          schema:
+            type: string
         - name: categoryId
           in: query
           schema:
             type: integer
+        - name: q
+          in: query
+          description: Texto a buscar en nombre, SKU o código de barras
+          schema:
+            type: string
         - name: active
           in: query
+          description: true (por defecto) = solo activos; false = solo dados de baja; all = todos
           schema:
-            type: boolean
+            type: string
+            enum: ['true', 'false', all]
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
       responses:
         '200':
-          description: Lista de productos
+          description: Lista paginada de productos (sin especificaciones)
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Product'
+                $ref: '#/components/schemas/ProductPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
     post:
       summary: Crear un nuevo producto (ADMIN)
+      tags: [Productos]
       security:
         - bearerAuth: []
       requestBody:
@@ -39,19 +63,29 @@ paths:
               $ref: '#/components/schemas/ProductCreate'
       responses:
         '201':
-          description: Producto creado exitosamente
+          description: Producto creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '409':
-          description: SKU o código de barras duplicado
+          $ref: '#/components/responses/Conflict'
   /products/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
     get:
-      summary: Consultar detalle de un producto
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
+      summary: Consultar detalle de un producto, incluidas sus especificaciones (todos los roles)
+      description: También devuelve productos dados de baja (active = false).
+      tags: [Productos]
+      security:
+        - bearerAuth: []
       responses:
         '200':
           description: Detalle del producto
@@ -59,17 +93,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Product'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
     put:
       summary: Actualizar producto (ADMIN)
+      description: Reemplazo completo; las especificaciones enviadas reemplazan a las anteriores.
+      tags: [Productos]
       security:
         - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
       requestBody:
         required: true
         content:
@@ -79,27 +112,117 @@ paths:
       responses:
         '200':
           description: Producto actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
     delete:
       summary: Eliminar producto - Baja lógica (ADMIN)
+      tags: [Productos]
       security:
         - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
       responses:
         '204':
           description: Producto dado de baja
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /categories:
+    get:
+      summary: Listar categorías (todos los roles)
+      tags: [Categorías]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Categorías ordenadas por nombre
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Category'
+    post:
+      summary: Crear categoría (ADMIN)
+      tags: [Categorías]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryCreate'
+      responses:
+        '201':
+          description: Categoría creada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
 components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
+  parameters:
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+    Size:
+      name: size
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+  responses:
+    BadRequest:
+      description: Datos inválidos
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Producto no encontrado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Conflict:
+      description: SKU, código de barras o nombre de categoría duplicado (details.field indica cuál)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
   schemas:
+    Spec:
+      type: object
+      required: [key, value]
+      properties:
+        key:
+          type: string
+          maxLength: 60
+          example: RAM
+        value:
+          type: string
+          maxLength: 200
+          example: 16 GB
     Product:
       type: object
       properties:
@@ -108,41 +231,117 @@ components:
           format: uuid
         sku:
           type: string
+          example: LAP-LEN-T14
         barcode:
           type: string
+          example: '7701234567890'
         name:
           type: string
         description:
           type: string
+          nullable: true
         categoryId:
           type: integer
+        categoryName:
+          type: string
         basePrice:
           type: number
           format: float
         unit:
           type: string
-          example: "UND"
+          enum: [UND, CAJA]
         active:
           type: boolean
+        specs:
+          type: array
+          description: Solo en el detalle (GET /products/{id}) y en las respuestas de creación/edición
+          items:
+            $ref: '#/components/schemas/Spec'
         createdAt:
           type: string
           format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    ProductPage:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/Product'
+        page:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
     ProductCreate:
       type: object
       required: [sku, barcode, name, categoryId, basePrice, unit]
       properties:
         sku:
           type: string
+          description: 2 a 40 caracteres (letras, números, guiones); se guarda en mayúsculas
         barcode:
           type: string
+          description: 8 a 14 dígitos (EAN-8, EAN-13, GTIN-14)
         name:
           type: string
+          maxLength: 150
         description:
           type: string
+          maxLength: 500
         categoryId:
           type: integer
         basePrice:
           type: number
           format: float
+          minimum: 0
         unit:
+          type: string
+          enum: [UND, CAJA]
+        active:
+          type: boolean
+          description: Solo en PUT, para reactivar un producto dado de baja
+        specs:
+          type: array
+          maxItems: 30
+          items:
+            $ref: '#/components/schemas/Spec'
+    Category:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+    CategoryCreate:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 80
+        description:
+          type: string
+          maxLength: 200
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+          example: CONFLICT
+        message:
+          type: string
+        details:
+          nullable: true
+        timestamp:
+          type: string
+          format: date-time
+        path:
           type: string
