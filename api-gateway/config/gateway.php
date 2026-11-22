@@ -85,6 +85,9 @@ return [
 
         // ms-returns-audit
         ['GET', 'audit/kardex', 'audit', [$auditor, $admin]],
+        // Verificación de la cadena de hashes (RNF12). Va antes de kardex/{id}
+        // para que "verify" no se tome como un id.
+        ['GET', 'audit/kardex/verify', 'audit', [$auditor, $admin]],
         ['GET', 'audit/kardex/{id}', 'audit', [$auditor, $admin]],
         ['POST', 'audit/returns', 'audit', [$admin, $operator]],
         ['GET', 'audit/returns', 'audit', $all],
