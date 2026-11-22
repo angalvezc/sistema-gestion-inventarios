@@ -1,14 +1,25 @@
 openapi: 3.0.0
 info:
   title: ms-returns-audit API
-  version: 1.0.0
-  description: Inalterabilidad del Kardex y gestión de devoluciones.
+  version: 1.1.0
+  description: |
+    Kardex inalterable (RF07, RNF12), devoluciones y garantías (RF11) y métricas del dashboard (RF12).
+
+    El Kardex se alimenta solo, consumiendo el evento stock.movement.created de RabbitMQ.
+    Cada registro guarda un row_hash (SHA-256 encadenado con el registro anterior); la base de
+    datos bloquea UPDATE/DELETE con un trigger y el servicio trabaja con un rol sin esos permisos.
+    Roles: los aplica el API Gateway según la tabla de la Entrega 2, §2.1.
 servers:
   - url: /api/v1
+tags:
+  - name: Kardex
+  - name: Devoluciones
+  - name: Dashboard
 paths:
   /audit/kardex:
     get:
-      summary: Consulta inalterable de movimientos (Kardex)
+      summary: Consulta inalterable de movimientos (AUDITOR, ADMIN)
+      tags: [Kardex]
       security:
         - bearerAuth: []
       parameters:
@@ -17,18 +28,82 @@ paths:
           schema:
             type: string
             format: uuid
+        - name: warehouseId
+          in: query
+          schema:
+            type: integer
+        - name: type
+          in: query
+          schema:
+            $ref: '#/components/schemas/MovementType'
+        - name: userId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: from
+          in: query
+          description: Desde (AAAA-MM-DD en hora de Colombia, o fecha ISO 8601)
+          schema:
+            type: string
+        - name: to
+          in: query
+          description: Hasta, inclusive (AAAA-MM-DD en hora de Colombia, o fecha ISO 8601)
+          schema:
+            type: string
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
       responses:
         '200':
-          description: Historial de movimientos
+          description: Historial de movimientos, del más reciente al más antiguo
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/KardexEntry'
+                $ref: '#/components/schemas/KardexPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /audit/kardex/verify:
+    get:
+      summary: Verificar la integridad de la cadena de hashes del Kardex (AUDITOR, ADMIN)
+      description: Recalcula el row_hash de cada registro en orden. Si alguno fue alterado, indica desde qué registro se rompe la cadena (RNF12).
+      tags: [Kardex]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Resultado de la verificación
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChainVerification'
+  /audit/kardex/{id}:
+    get:
+      summary: Consultar un registro del Kardex (AUDITOR, ADMIN)
+      tags: [Kardex]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Registro del Kardex
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KardexEntry'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /audit/returns:
     post:
-      summary: Registrar devolución de cliente o proveedor
+      summary: Registrar devolución de cliente o proveedor (ADMIN, WAREHOUSE_OPERATOR)
+      description: Publica return.processed; ms-inventory-stock reingresa los ítems RESTOCK. Los DAMAGED son baja por avería.
+      tags: [Devoluciones]
       security:
         - bearerAuth: []
       requestBody:
@@ -40,13 +115,90 @@ paths:
       responses:
         '201':
           description: Devolución registrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReturnRequest'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '503':
+          description: ms-products no está disponible
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    get:
+      summary: Listar devoluciones (todos los roles)
+      tags: [Devoluciones]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: origin
+          in: query
+          schema:
+            type: string
+            enum: [CLIENT, SUPPLIER]
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: Devoluciones paginadas con sus ítems
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReturnPage'
+  /audit/dashboard/metrics:
+    get:
+      summary: Métricas consolidadas del inventario (todos los roles, RF12)
+      tags: [Dashboard]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Valor del inventario, productos agotados y movimientos del día
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardMetrics'
 components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
+  parameters:
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+    Size:
+      name: size
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+  responses:
+    BadRequest:
+      description: Datos o filtros inválidos
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Recurso no encontrado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
   schemas:
+    MovementType:
+      type: string
+      enum: [ENTRY, EXIT, TRANSFER_IN, TRANSFER_OUT, RETURN_IN]
     KardexEntry:
       type: object
       properties:
@@ -60,24 +212,65 @@ components:
           format: uuid
         skuSnapshot:
           type: string
+          nullable: true
         warehouseId:
           type: integer
         movementType:
-          type: string
+          $ref: '#/components/schemas/MovementType'
         quantity:
           type: integer
         balanceAfter:
           type: integer
         reference:
           type: string
+          nullable: true
         userId:
           type: string
           format: uuid
+          nullable: true
+        userEmail:
+          type: string
+          nullable: true
         occurredAt:
+          type: string
+          format: date-time
+        recordedAt:
           type: string
           format: date-time
         rowHash:
           type: string
+          description: SHA-256 (hex) de los datos del registro encadenado con el registro anterior
+    KardexPage:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/KardexEntry'
+        page:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+    ChainVerification:
+      type: object
+      properties:
+        valid:
+          type: boolean
+        checkedEntries:
+          type: integer
+        firstInvalidEntryId:
+          type: integer
+          description: Solo si valid = false
+        lastHash:
+          type: string
+          description: Solo si valid = true
+        message:
+          type: string
+        checkedAt:
+          type: string
+          format: date-time
     ReturnRequestCreate:
       type: object
       required: [origin, reason, items]
@@ -87,11 +280,60 @@ components:
           enum: [CLIENT, SUPPLIER]
         reason:
           type: string
+          minLength: 3
+          maxLength: 300
+        items:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            type: object
+            required: [productId, quantity, disposition, warehouseId]
+            properties:
+              productId:
+                type: string
+                format: uuid
+              quantity:
+                type: integer
+                minimum: 1
+              disposition:
+                type: string
+                enum: [RESTOCK, DAMAGED]
+                description: RESTOCK = vuelve al inventario; DAMAGED = baja por avería
+              warehouseId:
+                type: integer
+                description: 1 = BOD-A (Manizales), 2 = BOD-B (Medellín)
+    ReturnRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        returnNumber:
+          type: string
+          example: DEV-000001
+        origin:
+          type: string
+          enum: [CLIENT, SUPPLIER]
+        reason:
+          type: string
+        status:
+          type: string
+          enum: [REGISTERED, PROCESSED]
+        createdBy:
+          type: string
+          format: uuid
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
         items:
           type: array
           items:
             type: object
             properties:
+              id:
+                type: integer
               productId:
                 type: string
                 format: uuid
@@ -102,3 +344,66 @@ components:
                 enum: [RESTOCK, DAMAGED]
               warehouseId:
                 type: integer
+    ReturnPage:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReturnRequest'
+        page:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+    DashboardMetrics:
+      type: object
+      properties:
+        inventoryValue:
+          type: number
+          nullable: true
+          description: Suma de saldo x precio base; null si ms-products no respondió
+        inventoryValueAvailable:
+          type: boolean
+        currency:
+          type: string
+          example: COP
+        productsTracked:
+          type: integer
+        outOfStockProducts:
+          type: integer
+        totalUnits:
+          type: integer
+        unitsByWarehouse:
+          type: array
+          items:
+            type: object
+            properties:
+              warehouseId:
+                type: integer
+              units:
+                type: integer
+        movementsToday:
+          type: integer
+          description: Movimientos desde la medianoche, en hora de Colombia
+        timezone:
+          type: string
+          example: America/Bogota
+        generatedAt:
+          type: string
+          format: date-time
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          nullable: true
+        timestamp:
+          type: string
+          format: date-time
+        path:
+          type: string
