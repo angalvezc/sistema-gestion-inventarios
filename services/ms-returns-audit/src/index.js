@@ -48,7 +48,9 @@ function startMessaging(config, pool, kardexService) {
     console.warn('[ms-returns-audit] RABBITMQ_URL no definida: mensajería deshabilitada');
     return { stop: async () => {} };
   }
-  const consumer = new KardexConsumer({ kardexService, exchange: config.rabbitmq.exchange });
+  // prefetch 1: un mensaje a la vez. RabbitMQ entrega la cola en orden, así el Kardex
+  // queda en el mismo orden en que stock publicó los movimientos.
+  const consumer = new KardexConsumer({ kardexService, exchange: config.rabbitmq.exchange, prefetch: 1 });
   const rabbit = new RabbitMQConnection({
     url: config.rabbitmq.url,
     exchange: config.rabbitmq.exchange,
