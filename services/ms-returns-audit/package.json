@@ -1,0 +1,20 @@
+{
+  "name": "ms-returns-audit",
+  "version": "1.0.0",
+  "description": "Microservicio de auditoría: Kardex inalterable, devoluciones y métricas del dashboard (RF07, RF11, RF12, RNF12)",
+  "main": "src/index.js",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "amqplib": "0.10.5",
+    "express": "4.21.2",
+    "pg": "8.13.1",
+    "swagger-ui-express": "5.0.1",
+    "yaml": "2.6.1"
+  }
+}
