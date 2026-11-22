@@ -5,8 +5,15 @@
 // Garantía: "al menos una vez". Si el servicio se cae después de publicar y antes del
 // COMMIT, el evento se reenvía; por eso los consumidores son idempotentes (eventId).
 
+// Columnas permitidas para ordenar (lista cerrada: el valor se inserta en el SQL).
+//   created_at -> suficiente cuando el orden entre eventos no importa
+//   seq        -> orden real de los cambios (ms-inventory-stock, migración 003)
+const ORDER_COLUMNS = ['created_at', 'seq'];
+
 class OutboxPublisher {
-  constructor({ pool, rabbit, producer, batchSize = 50, intervalMs = 1000 }) {
+  constructor({ pool, rabbit, producer, batchSize = 50, intervalMs = 1000, orderBy = 'created_at' }) {
+    if (!ORDER_COLUMNS.includes(orderBy)) throw new Error(`orderBy debe ser uno de ${ORDER_COLUMNS.join(', ')}`);
+    this.orderBy = orderBy;
     this.pool = pool;
     this.rabbit = rabbit;
     this.producer = producer;
@@ -34,7 +41,7 @@ class OutboxPublisher {
         `SELECT id, event_type, payload, created_at
            FROM outbox_event
           WHERE published = FALSE
-          ORDER BY created_at
+          ORDER BY ${this.orderBy}
           LIMIT $1
           FOR UPDATE SKIP LOCKED`,
         [this.batchSize],

@@ -30,7 +30,9 @@ function startMessaging(config, pool, stockService) {
       await consumer.setup(connection);
     },
   });
-  const outbox = new OutboxPublisher({ pool, rabbit, producer: 'ms-inventory-stock', ...config.outbox });
+  // orderBy 'seq': los eventos salen en el orden real de los movimientos (migración 003),
+  // para que el Kardex los registre en ese mismo orden.
+  const outbox = new OutboxPublisher({ pool, rabbit, producer: 'ms-inventory-stock', orderBy: 'seq', ...config.outbox });
 
   rabbit.start();
   outbox.start();
